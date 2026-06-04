@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Balances</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 flex h-screen overflow-hidden">
+
+    <aside class="w-72 bg-slate-900 text-slate-200 flex flex-col h-full shrink-0">
+        <div class="p-6 border-b border-slate-800">
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                <span>📈</span> Panel de Control
+            </h1>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto p-4 space-y-6 custom-scroll">
+            <div>
+                <button onclick="switchTab('Balance')" id="menu-Balance" class="w-full text-left px-4 py-2.5 rounded-lg font-semibold transition bg-blue-600 text-white shadow-xs flex items-center justify-between">
+                    <span>🏠 Balance General</span>
+                </button>
+            </div>
+            
+            <div>
+                <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Pestañas de Gastos</p>
+                <div class="space-y-1" id="sidebar-gastos"></div>
+            </div>
+            
+            <div>
+                <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Pestañas de Ingresos</p>
+                <div class="space-y-1" id="sidebar-ingresos"></div>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+        <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-xs z-10">
+            <div>
+                <h2 id="current-view-title" class="text-2xl font-bold text-slate-900">Balance General</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Control financiero automatizado</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <select id="select-month" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                    <option value="1">Enero</option> <option value="2">Febrero</option> <option value="3">Marzo</option>
+                    <option value="4">Abril</option> <option value="5">Mayo</option> <option value="6">Junio</option>
+                    <option value="7">Julio</option> <option value="8">Agosto</option> <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option> <option value="11">Noviembre</option> <option value="12">Diciembre</option>
+                </select>
+                
+                <select id="select-year" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                </select>
+                
+                <button onclick="loadData()" class="bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer">
+                    🔄 Sincronizar
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 custom-scroll" id="content-container">
+            <div id="loading-state" class="flex flex-col items-center justify-center py-32 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mb-4"></div>
+                <p class="text-slate-500 text-sm font-medium">Procesando registros contables...</p>
+            </div>
+
+            <div id="view-Balance" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ingresos Totales</p>
+                        <p id="card-total-ingresos" class="text-3xl font-bold text-emerald-600 mt-1">$ 0,00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos Totales</p>
+                        <p id="card-total-gastos" class="text-3xl font-bold text-rose-600 mt-1">$ 0,00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Resultado Neto</p>
+                        <p id="card-balance-neto" class="text-3xl font-bold mt-1">$ 0,00</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100">
+                        <h3 class="text-base font-bold text-slate-900 text-left">Gastos</h3>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-slate-500 bg-slate-50/50 border-b border-slate-100 text-xs uppercase tracking-wider">
+                                <th class="py-3 px-6 text-left font-semibold">Concepto / Cuenta u Obligación</th>
+                                <th class="py-3 px-6 text-right font-semibold">Monto Acumulado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-balance-gastos" class="divide-y divide-slate-100"></tbody>
+                        <tfoot>
+                            <tr class="bg-rose-50/40 font-bold text-rose-900 border-t border-slate-200">
+                                <td class="py-4 px-6 text-left">Total</td>
+                                <td id="total-balance-gastos" class="py-4 px-6 text-right font-mono">$ 0,00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100">
+                        <h3 class="text-base font-bold text-slate-900 text-left">Ingresos</h3>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-slate-500 bg-slate-50/50 border-b border-slate-100 text-xs uppercase tracking-wider">
+                                <th class="py-3 px-6 text-left font-semibold">Concepto / Cuenta u Obligación</th>
+                                <th class="py-3 px-6 text-right font-semibold">Monto Acumulado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-balance-ingresos" class="divide-y divide-slate-100"></tbody>
+                        <tfoot>
+                            <tr class="bg-emerald-50/40 font-bold text-emerald-900 border-t border-slate-200">
+                                <td class="py-4 px-6 text-left">Total</td>
+                                <td id="total-balance-ingresos" class="py-4 px-6 text-right font-mono">$ 0,00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-Detail" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="overflow-x-auto custom-scroll">
+                    <table class="w-full text-xs text-left whitespace-nowrap">
+                        <thead class="bg-slate-900 text-slate-200 uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th class="py-3.5 px-4 font-semibold">Fecha</th>
+                                <th class="py-3.5 px-4 font-semibold">Detalle</th>
+                                <th class="py-3.5 px-4 font-semibold text-right">Monto</th>
+                                <th class="py-3.5 px-4 font-semibold">Detalle de la Operación</th>
+                                <th class="py-3.5 px-4 font-semibold">AFIP/ IVA 21%</th>
+                                <th class="py-3.5 px-4 font-semibold">IVA 10.5%</th>
+                                <th class="py-3.5 px-4 font-semibold">Iva Contenido</th>
+                                <th class="py-3.5 px-4 font-semibold">ID Carpeta Madre</th>
+                                <th class="py-3.5 px-4 font-semibold">ID Carpeta Compra</th>
+                                <th class="py-3.5 px-4 font-semibold">ID Comprobante Compra</th>
+                                <th class="py-3.5 px-4 font-semibold">ID Carpeta Pago</th>
+                                <th class="py-3.5 px-4 font-semibold">ID Comprobante Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-detail-body" class="divide-y divide-slate-200 text-slate-700"></tbody>
+                        <tfoot>
+                            <tr id="table-detail-footer" class="bg-slate-100 font-bold text-slate-900 text-sm border-t border-slate-300"></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // PEGAR AQUÍ TU URL DE EJECUCIÓN WEB APP GENERADA AL IMPLEMENTAR EN GOOGLE APPS SCRIPT
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
+
+        const GASTOS_SHEETS = [
+            "Alquiler Don Bosco 128 - UF1 y 2", "Alquiler Don Bosco 128 - UF3 y 4", "Eden Don Bosco 128", 
+            "Eden Don Bosco 128 UF4", "Litoral Gas Don Bosco 128", "Claro Tv - Internet", "Impuestos Inmobiliarios", 
+            "Alquiler Francia 172", "Eden Francia 172", "Personal Flow", "Contador", "Abogado", "Seguros", 
+            "Publicidad", "Reparaciones - Mantenimiento", "Habitat Ecologico", "Tarjetas Nahuel", "Tarjetas Cesar", 
+            " Supermercado - Despensa", "Pastas Fabiano", "Ecoquimica Tripiel", "Mudemed", "Fumigacion - Cordisco", 
+            "Verduleria", "Galliteteria", "Insumos Enfermeria", "Gastos diarios y otros"
+        ];
+        const INGRESOS_SHEETS = ["Ingresos"];
+
+        let currentActiveTab = "Balance";
+        let localDataCached = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            document.getElementById('select-month').value = now.getMonth() + 1;
+            
+            const yearSelect = document.getElementById('select-year');
+            const currentYear = now.getFullYear();
+            for (let y = currentYear - 2; y <= currentYear + 2; y++) {
+                const opt = document.createElement('option');
+                opt.value = y; opt.textContent = y;
+                if (y === currentYear) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+            
+            renderSidebarStructure();
+            loadData();
+        });
+
+        function renderSidebarStructure() {
+            const gContainer = document.getElementById('sidebar-gastos');
+            gContainer.innerHTML = '';
+            GASTOS_SHEETS.forEach(name => {
+                gContainer.appendChild(buildMenuButton(name, '📄'));
+            });
+
+            const iContainer = document.getElementById('sidebar-ingresos');
+            iContainer.innerHTML = '';
+            INGRESOS_SHEETS.forEach(name => {
+                iContainer.appendChild(buildMenuButton(name, '📥'));
+            });
+        }
+
+        function buildMenuButton(name, icon) {
+            const btn = document.createElement('button');
+            btn.id = `menu-${name.replace(/\s+/g, '_')}`;
+            btn.onclick = () => switchTab(name);
+            btn.className = "w-full text-left px-4 py-1.5 rounded-md text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 truncate cursor-pointer";
+            btn.innerHTML = `<span>${icon}</span> <span class="truncate">${name.trim()}</span>`;
+            return btn;
+        }
+
+        function formatCurrencyAR(val) {
+            return new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+                minimumFractionDigits: 2
+            }).format(val);
+        }
+
+        function switchTab(tabName) {
+            currentActiveTab = tabName;
+            
+            document.querySelectorAll('nav button').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white', 'shadow-xs', 'bg-slate-800');
+                b.classList.add('text-slate-400', 'hover:text-white', 'hover:bg-slate-800');
+            });
+            
+            const activeId = tabName === 'Balance' ? 'menu-Balance' : `menu-${tabName.replace(/\s+/g, '_')}`;
+            const activeBtn = document.getElementById(activeId);
+            if (activeBtn) {
+                if (tabName === 'Balance') {
+                    activeBtn.className = "w-full text-left px-4 py-2.5 rounded-lg font-semibold transition bg-blue-600 text-white shadow-xs flex items-center justify-between";
+                } else {
+                    activeBtn.className = "w-full text-left px-4 py-1.5 rounded-md text-sm bg-slate-800 text-white font-medium flex items-center gap-2 truncate";
+                }
+            }
+            
+            document.getElementById('current-view-title').textContent = tabName === 'Balance' ? 'Balance General' : tabName;
+            renderActiveView();
+        }
+
+        async function loadData() {
+            const month = document.getElementById('select-month').value;
+            const year = document.getElementById('select-year').value;
+            
+            const loading = document.getElementById('loading-state');
+            const vBalance = document.getElementById('view-Balance');
+            const vDetail = document.getElementById('view-Detail');
+            
+            loading.classList.remove('hidden');
+            vBalance.classList.add('hidden');
+            vDetail.classList.add('hidden');
+            
+            if (WEB_APP_URL === "TU_URL_DE_APPS_SCRIPT") {
+                loading.classList.add('hidden');
+                alert("Asigna la URL de tu implementación web app de Google Apps Script.");
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${WEB_APP_URL}?month=${month}&year=${year}`);
+                localDataCached = await res.json();
+                renderActiveView();
+            } catch (err) {
+                console.error(err);
+                alert("Error de red al conectar con la API de Google Sheets.");
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderActiveView() {
+            if (!localDataCached) return;
+            const vBalance = document.getElementById('view-Balance');
+            const vDetail = document.getElementById('view-Detail');
+            
+            if (currentActiveTab === "Balance") {
+                vBalance.classList.remove('hidden');
+                vDetail.classList.add('hidden');
+                buildBalanceSummaryView();
+            } else {
+                vBalance.classList.add('hidden');
+                vDetail.classList.remove('hidden');
+                buildTabDetailView(currentActiveTab);
+            }
+        }
+
+        function buildBalanceSummaryView() {
+            const summary = localDataCached.summary;
+            
+            document.getElementById('card-total-ingresos').textContent = formatCurrencyAR(summary.totalIngresos);
+            document.getElementById('card-total-gastos').textContent = formatCurrencyAR(summary.totalGastos);
+            
+            const netCard = document.getElementById('card-balance-neto');
+            netCard.textContent = formatCurrencyAR(summary.balanceNeto);
+            netCard.className = `text-3xl font-bold mt-1 ${summary.balanceNeto >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+            
+            // Render de la subtabla de Gastos individuales
+            const tbodyGastos = document.getElementById('table-balance-gastos');
+            tbodyGastos.innerHTML = '';
+            GASTOS_SHEETS.forEach(name => {
+                const val = summary.gastos[name] || 0;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-6 text-left font-medium text-slate-700">${name}</td>
+                    <td class="py-3 px-6 text-right font-mono font-semibold text-slate-900">${formatCurrencyAR(val)}</td>
+                `;
+                tbodyGastos.appendChild(tr);
+            });
+            document.getElementById('total-balance-gastos').textContent = formatCurrencyAR(summary.totalGastos);
+            
+            // Render de la subtabla de Ingresos individuales
+            const tbodyIngresos = document.getElementById('table-balance-ingresos');
+            tbodyIngresos.innerHTML = '';
+            INGRESOS_SHEETS.forEach(name => {
+                const val = summary.ingresos[name] || 0;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-6 text-left font-medium text-slate-700">${name}</td>
+                    <td class="py-3 px-6 text-right font-mono font-semibold text-slate-900">${formatCurrencyAR(val)}</td>
+                `;
+                tbodyIngresos.appendChild(tr);
+            });
+            document.getElementById('total-balance-ingresos').textContent = formatCurrencyAR(summary.totalIngresos);
+        }
+
+        function buildTabDetailView(sheetName) {
+            const rows = localDataCached.details[sheetName] || [];
+            const isGasto = GASTOS_SHEETS.includes(sheetName);
+            const tbody = document.getElementById('table-detail-body');
+            tbody.innerHTML = '';
+            
+            let totalAcumulado = 0;
+            
+            if (rows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="12" class="text-center py-16 text-slate-400 font-medium bg-slate-50/50">
+                            No existen operaciones para esta pestaña en el mes seleccionado.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('table-detail-footer').innerHTML = `
+                    <td colspan="2" class="py-4 px-4 text-left">Total General</td>
+                    <td class="py-4 px-4 text-right font-mono">${formatCurrencyAR(0)}</td>
+                    <td colspan="9"></td>
+                `;
+                return;
+            }
+            
+            rows.forEach(row => {
+                // Sumarización lógica según procedencia
+                totalAcumulado += isGasto ? Math.abs(row.monto) : row.monto;
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/70 transition";
+                
+                const styleMonto = row.monto < 0 ? 'text-rose-600 font-semibold' : (!isGasto && row.monto > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-900');
+                
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono">${row.fecha}</td>
+                    <td class="py-3 px-4 text-slate-900 max-w-xs truncate" title="${row.detalle}">${row.detalle}</td>
+                    <td class="py-3 px-4 text-right font-mono ${styleMonto}">${formatCurrencyAR(row.monto)}</td>
+                    <td class="py-3 px-4 max-w-xs truncate" title="${row.detalleOperacion}">${row.detalleOperacion}</td>
+                    <td class="py-3 px-4 font-mono">${row.afipIva21}</td>
+                    <td class="py-3 px-4 font-mono">${row.iva105}</td>
+                    <td class="py-3 px-4 font-mono">${row.ivaContenido}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px] truncate max-w-[90px] select-all" title="${row.idCarpetaMadre}">${row.idCarpetaMadre}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px] truncate max-w-[90px] select-all" title="${row.idCarpetaCompra}">${row.idCarpetaCompra}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px] truncate max-w-[90px] select-all" title="${row.idComprobanteCompra}">${row.idComprobanteCompra}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px] truncate max-w-[90px] select-all" title="${row.idCarpetaPago}">${row.idCarpetaPago}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px] truncate max-w-[90px] select-all" title="${row.idComprobantePago}">${row.idComprobantePago}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('table-detail-footer').innerHTML = `
+                <td colspan="2" class="py-4 px-4 text-left font-bold uppercase tracking-wider text-xs">Total de la Pestaña</td>
+                <td class="py-4 px-4 text-right font-mono font-bold text-base ${isGasto ? 'text-rose-700' : 'text-emerald-700'}">${formatCurrencyAR(totalAcumulado)}</td>
+                <td colspan="9"></td>
+            `;
+        }
+    </script>
+</body>
+</html>
