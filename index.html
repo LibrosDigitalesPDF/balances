@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Balances</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -48,14 +48,31 @@
             </div>
             
             <div class="flex items-center gap-3">
-                <select id="select-month" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                <select id="select-month" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="1">Enero</option> <option value="2">Febrero</option> <option value="3">Marzo</option>
                     <option value="4">Abril</option> <option value="5">Mayo</option> <option value="6">Junio</option>
                     <option value="7">Julio</option> <option value="8">Agosto</option> <option value="9">Septiembre</option>
                     <option value="10">Octubre</option> <option value="11">Noviembre</option> <option value="12">Diciembre</option>
                 </select>
                 
-                <select id="select-year" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                <select id="select-year" onchange="loadData()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                    <option value="2029">2029</option>
+                    <option value="2030">2030</option>
+                    <option value="2031">2031</option>
+                    <option value="2032">2032</option>
+                    <option value="2033">2033</option>
+                    <option value="2034">2034</option>
+                    <option value="2035">2035</option>
+                    <option value="2036">2036</option>
+                    <option value="2037">2037</option>
+                    <option value="2038">2038</option>
+                    <option value="2039">2039</option>
+                    <option value="2040">2040</option>
                 </select>
                 
                 <button onclick="loadData()" class="bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer">
@@ -159,9 +176,8 @@
     </main>
 
     <script>
-        // PEGAR AQUÍ TU URL DE EJECUCIÓN WEB APP GENERADA AL IMPLEMENTAR EN GOOGLE APPS SCRIPT
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec
-";
+        // PEGAR AQUÍ TU URL DE EJECUCIÓN WEB APP DE GOOGLE APPS SCRIPT TERMINADA EN /exec
+        const WEB_APP_URL = "TU_URL_DE_APPS_SCRIPT";
 
         const GASTOS_SHEETS = [
             "Alquiler Don Bosco 128 - UF1 y 2", "Alquiler Don Bosco 128 - UF3 y 4", "Eden Don Bosco 128", 
@@ -178,16 +194,10 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             const now = new Date();
-            document.getElementById('select-month').value = now.getMonth() + 1;
             
-            const yearSelect = document.getElementById('select-year');
-            const currentYear = now.getFullYear();
-            for (let y = currentYear - 2; y <= currentYear + 2; y++) {
-                const opt = document.createElement('option');
-                opt.value = y; opt.textContent = y;
-                if (y === currentYear) opt.selected = true;
-                yearSelect.appendChild(opt);
-            }
+            // Asigna automáticamente el mes y año en curso
+            document.getElementById('select-month').value = now.getMonth() + 1;
+            document.getElementById('select-year').value = now.getFullYear();
             
             renderSidebarStructure();
             loadData();
