@@ -1,6 +1,7 @@
 // URL de la API web creada mediante Google Apps Script
 // Reemplazar esta constante con la URL real devuelta al implementar como Web App
-const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec
+";
 
 // Listas oficiales de pestañas de acuerdo con la especificación estructural
 const GASTOS_CATEGORIES = [
