@@ -163,4 +163,65 @@
 
                 <section id="view-resumen-anual" class="tab-view">
                     <div class="card">
-                        <h3 class="section-title text-
+                        <h3 class="section-title text-left">Resumen Consolidado Anual</h3>
+                        <p style="margin-bottom: 20px; color: var(--text-secondary);">Visualización general de flujos acumulados durante el año seleccionado.</p>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                               <thead>
+                                   <tr>
+                                       <th class="text-left">Métrica de Rendimiento</th>
+                                       <th class="text-right">Monto Acumulado</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   <tr>
+                                       <td class="text-left">Ingresos Totales del Año</td>
+                                       <td class="text-right text-success" id="annual-ingresos">$ 0,00</td>
+                                   </tr>
+                                   <tr>
+                                       <td class="text-left">Gastos Totales del Año (Valor Absoluto)</td>
+                                       <td class="text-right text-danger" id="annual-gastos">$ 0,00</td>
+                                   </tr>
+                                   <tr class="table-total-row">
+                                       <td class="text-left">Balance Neto Acumulado</td>
+                                       <td class="text-right" id="annual-balance">$ 0,00</td>
+                                   </tr>
+                               </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-historial" class="tab-view">
+                    <div class="card">
+                        <h3 class="section-title text-left" id="historial-title">Selecciona una pestaña del menú</h3>
+                        <p style="margin-bottom: 20px; color: var(--text-secondary);" id="historial-subtitle">Aquí verás todos los movimientos históricos registrados.</p>
+                        
+                        <div class="table-responsive">
+                            <table class="data-table hidden" id="historial-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Fecha</th>
+                                        <th class="text-left">Detalle</th>
+                                        <th class="text-left">Operación</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historial-tbody">
+                                    </tbody>
+                            </table>
+                        </div>
+                        
+                        <div id="historial-empty" class="alert alert-info hidden" style="background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-secondary); text-align: center;">
+                            No hay registros históricos para esta pestaña.
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
