@@ -10,7 +10,35 @@
     <div id="main-loader" class="loader-overlay">
         <div class="spinner-container">
             <div class="spinner"></div>
-            <p class="loader-text">Cargando base de datos...</p>
+            <p class="loader-text" id="loader-msg">Cargando base de datos...</p>
+        </div>
+    </div>
+
+    <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
+
+    <div id="web-modal" class="modal-overlay hidden">
+        <div class="modal-content card">
+            <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
+            <p id="modal-prov-name" style="margin-bottom: 20px; font-weight: 600; color: var(--text-secondary);"></p>
+            
+            <div class="modal-body">
+                <div id="web-view-mode" style="text-align: center; padding: 20px 0;">
+                    <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex;">Visitar Sitio Web</a>
+                    <p id="modal-no-web" class="text-danger hidden">Este proveedor no tiene una web registrada.</p>
+                </div>
+                
+                <div id="web-edit-mode" class="hidden">
+                    <label style="font-size: 9.5pt; font-weight: 600; color: var(--text-secondary);">URL de la página web:</label>
+                    <input type="text" id="modal-web-input" class="edit-input" style="margin-top: 8px; margin-bottom: 20px;" placeholder="Ej: https://www.proveedor.com">
+                </div>
+            </div>
+            
+            <div class="modal-footer action-buttons" style="justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button id="btn-modal-edit" class="action-btn btn-edit">Editar URL</button>
+                <button id="btn-modal-save" class="action-btn btn-save hidden">Guardar</button>
+                <button id="btn-modal-cancel" class="action-btn btn-cancel hidden">Cancelar</button>
+                <button id="btn-modal-close" class="action-btn btn-secondary" style="color: var(--text-primary); border: 1px solid var(--border-color); background: transparent;">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -44,18 +72,15 @@
     </nav>
 
     <div id="module-balances" class="app-module active">
+        
         <aside class="sidebar">
             <nav class="sidebar-menu">
-                <button class="menu-btn active" data-tab="balance">
-                    <span>Balance Mensual</span>
-                </button>
-                <button class="menu-btn" data-tab="resumen-anual">
-                    <span>Resumen Anual</span>
-                </button>
+                <button class="menu-btn active" data-tab="balance"><span>Balance Mensual</span></button>
+                <button class="menu-btn" data-tab="resumen-anual"><span>Resumen Anual</span></button>
             </nav>
 
             <div class="sidebar-history">
-                <h3 class="sidebar-heading">Historial por Pestaña</h3>
+                <h3 class="sidebar-heading">Historial y Edición</h3>
                 <div class="sidebar-group">
                     <h4 class="sidebar-subheading text-danger">Gastos</h4>
                     <div id="sidebar-gastos-list" class="sidebar-dynamic-list"></div>
@@ -65,9 +90,7 @@
                     <div id="sidebar-ingresos-list" class="sidebar-dynamic-list"></div>
                 </div>
             </div>
-            <div class="sidebar-footer">
-                <p>Módulo Balances v2.0</p>
-            </div>
+            <div class="sidebar-footer"><p>Módulo Balances v3.0</p></div>
         </aside>
 
         <main class="main-content">
@@ -78,7 +101,8 @@
                 </div>
             </header>
 
-            <div class="view-container">
+            <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                
                 <section id="view-balance" class="tab-view active">
                     <div class="card selector-card">
                         <div class="selector-group">
@@ -178,26 +202,41 @@
                     </div>
                 </section>
 
-                <section id="view-historial" class="tab-view">
-                    <div class="card">
-                        <h3 class="section-title text-left" id="historial-title">Selecciona una pestaña</h3>
-                        <div class="table-responsive">
+                <section id="view-historial" class="tab-view" style="flex-grow: 1; display: none; flex-direction: column;">
+                    <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+                            <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
+                            <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white;">+ Nueva Operación</button>
+                        </div>
+                        
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
                                     <tr>
                                         <th class="text-left">Fecha</th>
                                         <th class="text-left">Detalle</th>
-                                        <th class="text-left">Operación</th>
                                         <th class="text-right">Monto</th>
+                                        <th class="text-left">Operación</th>
+                                        <th class="text-left">IVA 21%</th>
+                                        <th class="text-left">IVA 10.5%</th>
+                                        <th class="text-left">IVA Cont.</th>
+                                        <th class="text-left">ID Carpeta C.</th>
+                                        <th class="text-left">ID Carpeta V.</th>
+                                        <th class="text-center">Comprobante C.</th>
+                                        <th class="text-center">Comprobante V.</th>
+                                        <th class="text-center sticky-col">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="historial-tbody"></tbody>
                             </table>
-                            <div class="section-total-row hidden" id="historial-total-row">
-                                <span class="total-label text-left">TOTAL HISTÓRICO DE LA PESTAÑA</span>
-                                <span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
-                            </div>
                         </div>
+
+                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 24px;">
+                            <span class="total-label text-left">TOTAL HISTÓRICO DE LA PESTAÑA</span>
+                            <span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
+                        </div>
+
                         <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros.</div>
                     </div>
                 </section>
@@ -217,8 +256,8 @@
                 </button>
             </header>
 
-            <div class="card">
-                <div class="table-responsive">
+            <div class="card" style="overflow: hidden; padding: 0;">
+                <div class="table-responsive nowrap-table" style="padding: 24px;">
                     <table class="data-table" id="proveedores-table">
                         <thead>
                             <tr>
@@ -228,8 +267,8 @@
                                 <th class="text-left">Banco</th>
                                 <th class="text-left">Alias</th>
                                 <th class="text-left">CBU</th>
-                                <th class="text-left">Web</th>
-                                <th class="text-center">Acciones</th>
+                                <th class="text-center">Web</th>
+                                <th class="text-center sticky-col">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="proveedores-tbody">
