@@ -13,9 +13,9 @@
     --primary-color: #3b82f6;
     --success-color: #10b981;
     --danger-color: #ef4444;
+    --warning-color: #f59e0b;
     --border-color: #e2e8f0;
     --table-header-bg: #f8fafc;
-    --table-stripe: #f8fafc;
     --hover-bg: #f8fafc;
     --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -33,11 +33,11 @@ body.dark-mode {
     --text-primary: #ffffff;
     --text-secondary: #a3a3a3;
     --primary-color: #3b82f6;
-    --success-color: #10b981; /* Verde brillante para contraste en negro */
-    --danger-color: #ef4444;  /* Rojo brillante para contraste en negro */
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
     --border-color: #333333;
     --table-header-bg: #1a1a1a;
-    --table-stripe: #0a0a0a;
     --hover-bg: #1a1a1a;
 }
 
@@ -51,8 +51,10 @@ body {
     font-family: var(--font-family);
     background-color: var(--bg-main);
     color: var(--text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -102,14 +104,96 @@ body {
 }
 
 /* =========================================
-   LAYOUT PRINCIPAL Y SIDEBAR
+   NAVEGACIÓN SUPERIOR (NUEVO)
    ========================================= */
-.app-container {
+.top-navbar {
     display: flex;
-    height: 100vh; /* Fijo para permitir scroll interno */
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+    padding: 0 24px;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-brand .brand-icon {
+    background-color: var(--primary-color);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 12pt;
+}
+
+.nav-brand h2 {
+    font-size: 13pt;
+    font-weight: 700;
+}
+
+.nav-modules {
+    display: flex;
+    gap: 10px;
+}
+
+.top-nav-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 10.5pt;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.top-nav-btn:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.top-nav-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* =========================================
+   LAYOUT DE MÓDULOS (BALANCES Y PROVEEDORES)
+   ========================================= */
+.app-module {
+    display: none; /* Oculto por defecto */
+    flex-grow: 1;
+    height: calc(100vh - 64px);
     overflow: hidden;
 }
 
+.app-module.active {
+    display: flex; /* Se muestra cuando tiene la clase active */
+}
+
+/* =========================================
+   SIDEBAR (MÓDULO BALANCES)
+   ========================================= */
 .sidebar {
     width: 280px;
     background-color: var(--bg-sidebar);
@@ -119,43 +203,13 @@ body {
     padding: 24px 16px;
     flex-shrink: 0;
     box-shadow: 4px 0 10px rgba(0,0,0,0.05);
-    overflow-y: auto; /* Scroll para historial largo */
+    overflow-y: auto;
     transition: background-color 0.3s ease;
 }
 
-/* Personalizar scrollbar de la sidebar */
 .sidebar::-webkit-scrollbar { width: 6px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-
-.sidebar-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 24px;
-    flex-shrink: 0;
-}
-
-.brand-icon {
-    background-color: var(--primary-color);
-    color: white;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    font-size: 14pt;
-}
-
-.sidebar-brand h2 {
-    color: var(--sidebar-text-active);
-    font-size: 14pt;
-    font-weight: 700;
-}
 
 .sidebar-menu {
     display: flex;
@@ -191,9 +245,9 @@ body {
     background-color: var(--sidebar-bg-active);
     color: var(--sidebar-text-active);
     font-weight: 600;
+    border-left: 3px solid var(--primary-color);
 }
 
-/* Historial dinámico en Sidebar */
 .sidebar-history {
     flex-grow: 1;
     display: flex;
@@ -277,6 +331,12 @@ body {
     transition: background-color 0.3s ease;
 }
 
+.main-content.full-width {
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
 .main-header {
     display: flex;
     justify-content: space-between;
@@ -296,12 +356,6 @@ body {
 .header-subtitle {
     font-size: 10.5pt;
     color: var(--text-secondary);
-}
-
-.header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
 }
 
 /* Botones */
@@ -388,12 +442,9 @@ body {
 .form-control:focus { border-color: var(--primary-color); }
 
 /* =========================================
-   ACORDEONES Y TABLAS (GASTOS E INGRESOS)
+   ACORDEONES Y TABLAS
    ========================================= */
-.financial-section {
-    display: flex;
-    flex-direction: column;
-}
+.financial-section { display: flex; flex-direction: column; }
 
 .section-title {
     font-size: 13pt;
@@ -414,9 +465,7 @@ body {
     overflow: hidden;
 }
 
-.accordion-item {
-    border-bottom: 1px solid var(--border-color);
-}
+.accordion-item { border-bottom: 1px solid var(--border-color); }
 .accordion-item:last-child { border-bottom: none; }
 
 .accordion-header {
@@ -432,11 +481,7 @@ body {
 
 .accordion-header:hover { background-color: var(--hover-bg); }
 
-.accordion-title-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+.accordion-title-group { display: flex; align-items: center; gap: 12px; }
 
 .accordion-icon {
     width: 16px;
@@ -447,18 +492,8 @@ body {
 
 .accordion-item.open .accordion-icon { transform: rotate(180deg); }
 
-.item-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 11pt;
-}
-
-.item-val {
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    color: var(--text-primary);
-    font-size: 11.5pt;
-}
+.item-name { font-weight: 600; color: var(--text-primary); font-size: 11pt; }
+.item-val { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-primary); font-size: 11.5pt; }
 
 .accordion-body {
     max-height: 0;
@@ -469,11 +504,10 @@ body {
 
 .accordion-content { padding: 16px; }
 
-/* Tablas interiores y de Historial */
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-}
+/* =========================================
+   TABLAS Y MODO EDICIÓN (PROVEEDORES)
+   ========================================= */
+.table-responsive { width: 100%; overflow-x: auto; }
 
 .detail-table, .data-table {
     width: 100%;
@@ -486,8 +520,9 @@ body {
 
 .detail-table th, .data-table th,
 .detail-table td, .data-table td {
-    padding: 10px 14px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
 }
 
 .detail-table th, .data-table th {
@@ -502,7 +537,49 @@ body {
 .detail-table tr:hover, .data-table tbody tr:hover { background-color: var(--hover-bg); }
 .detail-table tr:last-child td { border-bottom: none; }
 
-/* Totales y Finales */
+/* Estilos de Edición (Inputs y Botones) */
+.edit-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-size: 9.5pt;
+    outline: none;
+}
+
+.edit-input:focus {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.action-btn {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 9pt;
+    font-weight: 600;
+    color: white;
+    transition: opacity 0.2s;
+}
+
+.action-btn:hover { opacity: 0.85; }
+
+.btn-edit { background-color: var(--primary-color); }
+.btn-save { background-color: var(--success-color); }
+.btn-cancel { background-color: var(--text-secondary); }
+.btn-delete { background-color: var(--danger-color); }
+
+/* =========================================
+   TOTALES FINALES Y ALERTAS
+   ========================================= */
 .section-total-row {
     display: flex;
     justify-content: space-between;
@@ -514,17 +591,8 @@ body {
     border: 1px solid var(--border-color);
 }
 
-.total-label {
-    font-weight: 700;
-    font-size: 11pt;
-    color: var(--text-primary);
-}
-
-.total-amount {
-    font-weight: 800;
-    font-size: 12pt;
-    font-variant-numeric: tabular-nums;
-}
+.total-label { font-weight: 700; font-size: 11pt; color: var(--text-primary); }
+.total-amount { font-weight: 800; font-size: 12pt; font-variant-numeric: tabular-nums; }
 
 .balance-result-card {
     background: var(--card-bg);
@@ -548,25 +616,11 @@ body {
     padding: 6px 0;
 }
 
-.final-label {
-    font-weight: 800;
-    font-size: 13pt;
-    color: var(--text-primary);
-}
+.final-label { font-weight: 800; font-size: 13pt; color: var(--text-primary); }
+.final-amount { font-weight: 900; font-size: 16pt; font-variant-numeric: tabular-nums; }
 
-.final-amount {
-    font-weight: 900;
-    font-size: 16pt;
-    font-variant-numeric: tabular-nums;
-}
+.table-total-row { font-weight: bold; background-color: var(--table-header-bg); }
 
-/* Modificadores de tabla */
-.table-total-row {
-    font-weight: bold;
-    background-color: var(--table-header-bg);
-}
-
-/* Utilidades */
 .text-left { text-align: left; }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
@@ -574,7 +628,6 @@ body {
 .text-danger { color: var(--danger-color) !important; }
 .hidden { display: none !important; }
 
-/* Alertas */
 .alert {
     padding: 14px 20px;
     border-radius: 8px;
@@ -590,7 +643,9 @@ body {
     color: var(--danger-color);
 }
 
-/* Tab Management Views */
+/* =========================================
+   TABS MANAGEMENT (DENTRO DEL MÓDULO)
+   ========================================= */
 .tab-view { display: none; }
 .tab-view.active { display: block; animation: fadeIn 0.3s; }
 
@@ -603,14 +658,16 @@ body {
    RESPONSIVE DESIGN (MÓVILES)
    ========================================= */
 @media (max-width: 768px) {
-    .app-container { flex-direction: column; overflow: auto; }
-    .sidebar { width: 100%; padding: 16px; overflow-y: visible; }
-    .sidebar-history { display: none; /* Ocultamos el historial en móvil para ahorrar espacio, o podrías usar un botón para colapsarlo */ }
-    .main-content { padding: 16px; overflow-y: visible; }
+    body { height: auto; overflow: auto; }
+    .top-navbar { padding: 0 16px; flex-wrap: wrap; height: auto; gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+    .nav-actions { width: 100%; justify-content: space-between; }
+    .app-module { height: auto; flex-direction: column; }
+    .sidebar { width: 100%; padding: 16px; }
+    .main-content { padding: 16px; }
     .main-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .header-actions { width: 100%; justify-content: space-between; }
-    .selector-group { flex-direction: column; gap: 12px; }
+    .header-actions, .selector-group { width: 100%; flex-direction: column; }
     .control-field { width: 100%; }
     .final-amount { font-size: 14pt; }
     .detail-table th, .detail-table td { font-size: 9pt; padding: 8px; }
+    .action-buttons { flex-direction: column; gap: 4px; }
 }
