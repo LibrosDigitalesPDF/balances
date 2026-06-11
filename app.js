@@ -19,8 +19,12 @@ let appState = {
     proveedores: [],
     selectedMonth: "",
     selectedYear: "",
-    currentUpload: null, // Para guardar el contexto al subir comprobantes
-    activeProvRowIndex: null // Para el modal web
+    historyMonth: "ALL",
+    historyYear: "ALL",
+    currentHistorySheet: null,
+    currentHistoryType: null,
+    currentUpload: null,
+    activeProvRowIndex: null
 };
 
 // ==========================================
@@ -153,6 +157,7 @@ function populateSidebarHistory() {
 }
 
 function setupEventListeners() {
+    // Selectores del Dashboard Principal
     document.getElementById("select-month").addEventListener("change", (e) => {
         appState.selectedMonth = e.target.value;
         renderBalance();
@@ -161,20 +166,24 @@ function setupEventListeners() {
     document.getElementById("select-year").addEventListener("change", (e) => {
         appState.selectedYear = e.target.value;
         renderBalance();
-        if (document.getElementById("view-resumen-anual").classList.contains("active")) {
-            renderAnnualSummary();
-        }
+        if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
     });
 
-    document.getElementById("btn-refresh").addEventListener("click", () => {
-        fetchFinancialData();
+    // Selectores del Historial
+    document.getElementById("historial-month").addEventListener("change", (e) => {
+        appState.historyMonth = e.target.value;
+        renderHistoryTable();
     });
 
-    document.getElementById("btn-add-proveedor").addEventListener("click", () => {
-        addProveedorEmptyRow();
+    document.getElementById("historial-year").addEventListener("change", (e) => {
+        appState.historyYear = e.target.value;
+        renderHistoryTable();
     });
 
-    // Lector de archivos oculto para Subida a Google Drive
+    document.getElementById("btn-refresh").addEventListener("click", () => fetchFinancialData());
+    document.getElementById("btn-add-proveedor").addEventListener("click", () => addProveedorEmptyRow());
+
+    // Input Oculto Drive
     document.getElementById("global-file-input").addEventListener("change", function(e) {
         const file = e.target.files[0];
         if (!file || !appState.currentUpload) return;
@@ -184,12 +193,10 @@ function setupEventListeners() {
         reader.onload = function(evt) {
             const base64String = evt.target.result.split(',')[1];
             
-            // Buscar la fila para ver si ya tiene un folderId
             const typeKey = appState.currentUpload.categoryType; 
             const targetMap = appState.balances[typeKey][appState.currentUpload.sheetName];
             let folderId = "";
 
-            // Aplanamos los meses para buscar la fila
             for (let period in targetMap) {
                 let mov = targetMap[period].find(m => m.rowIndex === appState.currentUpload.rowIndex);
                 if (mov) {
@@ -214,19 +221,11 @@ function setupEventListeners() {
             fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
             .then(res => res.json())
             .then(data => {
-                if(data.status === "success") {
-                    fetchFinancialData();
-                } else {
-                    alert("Error al subir archivo: " + data.message);
-                    toggleLoader(false);
-                }
+                if(data.status === "success") fetchFinancialData();
+                else { alert("Error al subir archivo: " + data.message); toggleLoader(false); }
             })
-            .catch(err => {
-                alert("Error de conexión al subir.");
-                toggleLoader(false);
-            });
+            .catch(err => { alert("Error de conexión al subir."); toggleLoader(false); });
             
-            // Limpiar input
             document.getElementById("global-file-input").value = "";
         };
         reader.readAsDataURL(file);
@@ -261,13 +260,9 @@ function setupAccordions(container) {
         header.addEventListener("click", function() {
             const item = this.parentElement;
             const body = this.nextElementSibling;
-            
             item.classList.toggle("open");
-            if (item.classList.contains("open")) {
-                body.style.maxHeight = body.scrollHeight + "px";
-            } else {
-                body.style.maxHeight = null;
-            }
+            if (item.classList.contains("open")) body.style.maxHeight = body.scrollHeight + "px";
+            else body.style.maxHeight = null;
         });
     });
 }
@@ -300,10 +295,7 @@ function fetchFinancialData() {
     if(errContainer) errContainer.classList.add("hidden");
 
     fetch(API_URL)
-        .then(response => {
-            if (!response.ok) throw new Error("Error de red HTTP");
-            return response.json();
-        })
+        .then(response => { if (!response.ok) throw new Error("Error HTTP"); return response.json(); })
         .then(json => {
             if (json.status === "success") {
                 appState.balances = json.data.balances;
@@ -311,29 +303,20 @@ function fetchFinancialData() {
                 
                 renderBalance();
                 renderProveedores();
-                
-                if (document.getElementById("view-resumen-anual").classList.contains("active")) {
-                    renderAnnualSummary();
-                }
-                const activeHistoryBtn = document.querySelector(".history-btn.active");
-                if (activeHistoryBtn) activeHistoryBtn.click();
-            } else {
-                throw new Error(json.message);
-            }
+                if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
+                if (appState.currentHistorySheet) renderHistoryTable(); // Recargar tabla actual si hay una abierta
+            } else { throw new Error(json.message); }
         })
         .catch(err => {
-            console.error("Error al buscar datos:", err);
+            console.error(err);
             const errMsj = document.getElementById("error-message");
-            if(errMsj) {
-                errMsj.textContent = err.message;
-                errContainer.classList.remove("hidden");
-            }
+            if(errMsj) { errMsj.textContent = err.message; errContainer.classList.remove("hidden"); }
         })
         .finally(() => toggleLoader(false));
 }
 
 // ==========================================
-// MÓDULO: BALANCES (VISTAS MENSUALES Y ANUALES)
+// MÓDULO: BALANCES 
 // ==========================================
 function renderBalance() {
     if (!appState.balances) return;
@@ -358,12 +341,13 @@ function renderBalance() {
             categoryTotal += absMonto;
             movimientosCount++;
             
+            // Eliminado el color rojo/verde en la fila, se adaptará al tema (blanco/negro)
             rowsHtml += `
                 <tr>
                     <td class="text-left">${mov.fecha}</td>
                     <td class="text-left">${mov.detalle || "-"}</td>
                     <td class="text-left">${mov.operacion || "-"}</td>
-                    <td class="text-right">${formatArgentineCurrency(absMonto)}</td>
+                    <td class="text-right" style="font-weight:600; color: var(--text-primary);">${formatArgentineCurrency(absMonto)}</td>
                 </tr>
             `;
         });
@@ -396,7 +380,7 @@ function renderBalance() {
                             <tfoot>
                                 <tr class="table-total-row">
                                     <td colspan="3" class="text-right">TOTAL DE LA PESTAÑA</td>
-                                    <td class="text-right">${formatArgentineCurrency(categoryTotal)}</td>
+                                    <td class="text-right" style="color: var(--text-primary);">${formatArgentineCurrency(categoryTotal)}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -427,7 +411,7 @@ function renderBalance() {
                     <td class="text-left">${mov.fecha}</td>
                     <td class="text-left">${mov.detalle || "-"}</td>
                     <td class="text-left">${mov.operacion || "-"}</td>
-                    <td class="text-right">${formatArgentineCurrency(mov.monto)}</td>
+                    <td class="text-right" style="font-weight:600; color: var(--text-primary);">${formatArgentineCurrency(mov.monto)}</td>
                 </tr>
             `;
         });
@@ -458,7 +442,7 @@ function renderBalance() {
                             <tfoot>
                                 <tr class="table-total-row">
                                     <td colspan="3" class="text-right">TOTAL INGRESOS</td>
-                                    <td class="text-right">${formatArgentineCurrency(categoryTotal)}</td>
+                                    <td class="text-right" style="color: var(--text-primary);">${formatArgentineCurrency(categoryTotal)}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -494,18 +478,14 @@ function renderBalance() {
 
 function renderAnnualSummary() {
     if (!appState.balances) return;
-
     const selectedYear = appState.selectedYear;
-    let annualGastosTotal = 0;
-    let annualIngresosTotal = 0;
+    let annualGastosTotal = 0; let annualIngresosTotal = 0;
 
     GASTOS_CATEGORIES.forEach(sheetName => {
         const sheetMonths = appState.balances.gastos[sheetName] || {};
         for (const periodKey in sheetMonths) {
             if (periodKey.startsWith(`${selectedYear}-`)) {
-                sheetMonths[periodKey].forEach(mov => {
-                    annualGastosTotal += Math.abs(mov.monto);
-                });
+                sheetMonths[periodKey].forEach(mov => { annualGastosTotal += Math.abs(mov.monto); });
             }
         }
     });
@@ -513,9 +493,7 @@ function renderAnnualSummary() {
     const ingresosMonths = appState.balances.ingresos["Ingresos"] || {};
     for (const periodKey in ingresosMonths) {
         if (periodKey.startsWith(`${selectedYear}-`)) {
-            ingresosMonths[periodKey].forEach(mov => {
-                annualIngresosTotal += mov.monto;
-            });
+            ingresosMonths[periodKey].forEach(mov => { annualIngresosTotal += mov.monto; });
         }
     }
 
@@ -523,14 +501,13 @@ function renderAnnualSummary() {
 
     document.getElementById("annual-ingresos").textContent = formatArgentineCurrency(annualIngresosTotal);
     document.getElementById("annual-gastos").textContent = formatArgentineCurrency(annualGastosTotal);
-    
     const annualBalanceCell = document.getElementById("annual-balance");
     annualBalanceCell.textContent = formatFinalBalance(annualNet);
     annualBalanceCell.className = `text-right font-weight-bold ${annualNet >= 0 ? 'text-success' : 'text-danger'}`;
 }
 
 // ==========================================
-// MÓDULO: HISTORIAL DE BALANCES Y DRIVE (CRUD)
+// MÓDULO: HISTORIAL DE BALANCES 
 // ==========================================
 function openHistoryView(sheetName, type, clickedBtn) {
     if (!appState.balances) return;
@@ -546,10 +523,25 @@ function openHistoryView(sheetName, type, clickedBtn) {
     document.getElementById("tab-subtitle").textContent = sheetName;
     document.getElementById("historial-title").textContent = `Registros: ${sheetName}`;
 
-    // Configurar Botón Nueva Operación
     const btnAdd = document.getElementById("btn-add-balance");
     btnAdd.classList.remove("hidden");
     btnAdd.onclick = () => addBalanceEmptyRow(sheetName, type);
+
+    // Guardar contexto activo y reiniciar filtros
+    appState.currentHistorySheet = sheetName;
+    appState.currentHistoryType = type;
+    document.getElementById("historial-month").value = "ALL";
+    document.getElementById("historial-year").value = "ALL";
+    appState.historyMonth = "ALL";
+    appState.historyYear = "ALL";
+
+    renderHistoryTable();
+}
+
+function renderHistoryTable() {
+    const sheetName = appState.currentHistorySheet;
+    const type = appState.currentHistoryType;
+    if (!sheetName || !appState.balances) return;
 
     const targetMap = appState.balances[type][sheetName];
     const tbody = document.getElementById("historial-tbody");
@@ -562,20 +554,26 @@ function openHistoryView(sheetName, type, clickedBtn) {
     let totalRegistros = 0;
     let grandTotalHistorico = 0;
 
-    // Recopilar todos los movimientos aplanados
-    let allMovs = [];
+    let filteredMovs = [];
     for (const period in targetMap) {
+        const [year, month] = period.split("-");
+        
+        // Aplicar filtros de Mes y Año
+        if (appState.historyYear !== "ALL" && appState.historyYear !== year) continue;
+        if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue;
+
         if (targetMap[period]) {
-            allMovs = allMovs.concat(targetMap[period]);
+            filteredMovs = filteredMovs.concat(targetMap[period]);
         }
     }
 
-    if (allMovs.length === 0) {
+    if (filteredMovs.length === 0) {
         table.classList.add("hidden");
         totalRow.classList.add("hidden");
         emptyMsg.classList.remove("hidden");
     } else {
-        allMovs.forEach(mov => {
+        filteredMovs.forEach(mov => {
+            totalRegistros++;
             grandTotalHistorico += Math.abs(mov.monto);
             tbody.appendChild(createBalanceRowHTML(mov, false, sheetName, type));
         });
@@ -585,11 +583,10 @@ function openHistoryView(sheetName, type, clickedBtn) {
         emptyMsg.classList.add("hidden");
         
         totalVal.textContent = formatArgentineCurrency(grandTotalHistorico);
-        totalVal.className = `total-amount text-right ${type === 'gastos' ? 'text-danger' : 'text-success'}`;
+        totalVal.className = `total-amount text-right`; // Se adopta al tema automáticamente
     }
 }
 
-// Generador HTML para filas de Balance (Lectura y Edición completa A-L)
 function createBalanceRowHTML(mov, isEditing, sheetName, type) {
     const tr = document.createElement("tr");
 
@@ -608,14 +605,12 @@ function createBalanceRowHTML(mov, isEditing, sheetName, type) {
             <td class="text-center">-</td>
             <td class="action-buttons sticky-col">
                 <button class="action-btn btn-save" onclick="saveBalance(this, ${mov.rowIndex || 'null'}, '${sheetName}', '${type}')">Guardar</button>
-                <button class="action-btn btn-cancel" onclick="document.querySelector('.history-btn.active').click()">Cancelar</button>
+                <button class="action-btn btn-cancel" onclick="renderHistoryTable()">Cancelar</button>
             </td>
         `;
     } else {
         const montoFormat = formatArgentineCurrency(type === 'gastos' ? Math.abs(mov.monto) : mov.monto);
-        const colorClass = type === 'gastos' ? 'text-danger' : 'text-success';
 
-        // Lógica Botones Drive
         const btnVerC = `<a href="https://drive.google.com/file/d/${mov.idComprobanteCompra}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none; display:inline-block;">Ver</a>`;
         const btnSubirC = `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${sheetName}', ${mov.rowIndex}, 'compra', '${type}')">Subir</button>`;
         const compHTML_C = mov.idComprobanteCompra ? btnVerC : btnSubirC;
@@ -624,13 +619,13 @@ function createBalanceRowHTML(mov, isEditing, sheetName, type) {
         const btnSubirV = `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${sheetName}', ${mov.rowIndex}, 'venta', '${type}')">Subir</button>`;
         const compHTML_V = mov.idComprobanteVenta ? btnVerV : btnSubirV;
 
-        const linkCarpC = mov.idCarpetaCompra ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaCompra}" target="_blank">Carpeta</a>` : '-';
-        const linkCarpV = mov.idCarpetaVenta ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaVenta}" target="_blank">Carpeta</a>` : '-';
+        const linkCarpC = mov.idCarpetaCompra ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaCompra}" target="_blank" style="color:var(--primary-color);">Carpeta</a>` : '-';
+        const linkCarpV = mov.idCarpetaVenta ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaVenta}" target="_blank" style="color:var(--primary-color);">Carpeta</a>` : '-';
 
         tr.innerHTML = `
             <td>${mov.fecha || '-'}</td>
             <td>${mov.detalle || '-'}</td>
-            <td class="text-right ${colorClass}" style="font-weight:600;">${montoFormat}</td>
+            <td class="text-right" style="font-weight:600; color: var(--text-primary);">${montoFormat}</td>
             <td>${mov.operacion || '-'}</td>
             <td>${mov.iva21 || '-'}</td>
             <td>${mov.iva105 || '-'}</td>
@@ -677,11 +672,9 @@ window.editBalance = function(rowIndex, sheetName, type) {
 window.saveBalance = function(btnElement, rowIndex, sheetName, type) {
     const tr = btnElement.closest("tr");
     
-    // Al guardar un gasto, el monto en sheets suele ir negativo
     let rawMonto = tr.querySelector(".i-mon").value;
     if (type === 'gastos' && rawMonto > 0) rawMonto = -rawMonto;
 
-    // Recuperamos comprobantes ocultos si es edición para no perderlos
     let compCompra = "", compVenta = "";
     if (rowIndex) {
         const targetMap = appState.balances[type][sheetName];
@@ -711,7 +704,7 @@ window.saveBalance = function(btnElement, rowIndex, sheetName, type) {
 };
 
 window.deleteBalance = function(rowIndex, sheetName) {
-    if (confirm("¿Estás seguro de eliminar esta operación? Esta acción borrará la fila del Excel permanentemente.")) {
+    if (confirm("¿Eliminar esta operación permanentemente?")) {
         sendGlobalPostRequest("BAL_DELETE", { rowIndex: rowIndex, sheetName: sheetName });
     }
 };
@@ -722,7 +715,7 @@ window.triggerUpload = function(sheetName, rowIndex, uploadType, categoryType) {
 };
 
 // ==========================================
-// MÓDULO: PROVEEDORES (CRUD + MODAL WEB)
+// MÓDULO: PROVEEDORES
 // ==========================================
 function renderProveedores() {
     const tbody = document.getElementById("proveedores-tbody");
@@ -734,7 +727,6 @@ function createProvRowHTML(prov, isEditing) {
     const tr = document.createElement("tr");
 
     if (isEditing) {
-        // En edición, no se edita la Web aquí, se edita en el Modal.
         tr.innerHTML = `
             <td><input type="text" class="edit-input i-prov" value="${prov.proveedor || ''}"></td>
             <td><input type="text" class="edit-input i-nom" value="${prov.nombre || ''}"></td>
@@ -757,7 +749,7 @@ function createProvRowHTML(prov, isEditing) {
             <td>${prov.alias}</td>
             <td>${prov.cbu}</td>
             <td class="text-center">
-                <button class="action-btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color); background:transparent;" onclick="openWebModal(${prov.rowIndex})">Ver Web</button>
+                <button class="action-btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color); background:transparent; padding: 6px 10px;" onclick="openWebModal(${prov.rowIndex})">Ver Web</button>
             </td>
             <td class="action-buttons sticky-col">
                 <button class="action-btn btn-edit" onclick="editProveedor(${prov.rowIndex})">Editar</button>
@@ -780,16 +772,11 @@ window.editProveedor = function(rowIndex) {
     const tbody = document.getElementById("proveedores-tbody");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const rowIndexInTable = rows.findIndex(row => row.querySelector(`button[onclick*="${rowIndex}"]`));
-    
-    if (rowIndexInTable > -1) {
-        tbody.replaceChild(createProvRowHTML(prov, true), rows[rowIndexInTable]);
-    }
+    if (rowIndexInTable > -1) tbody.replaceChild(createProvRowHTML(prov, true), rows[rowIndexInTable]);
 };
 
 window.saveProveedor = function(btnElement, rowIndex) {
     const tr = btnElement.closest("tr");
-    
-    // Recuperamos la web actual para no perderla al guardar desde la tabla
     let currentWeb = "";
     if (rowIndex) {
         const p = appState.proveedores.find(p => p.rowIndex === rowIndex);
@@ -811,9 +798,7 @@ window.saveProveedor = function(btnElement, rowIndex) {
 };
 
 window.deleteProveedor = function(rowIndex) {
-    if (confirm("¿Eliminar proveedor?")) {
-        sendGlobalPostRequest("PROV_DELETE", { rowIndex: rowIndex });
-    }
+    if (confirm("¿Eliminar proveedor?")) sendGlobalPostRequest("PROV_DELETE", { rowIndex: rowIndex });
 };
 
 window.openWebModal = function(rowIndex) {
@@ -829,7 +814,6 @@ window.openWebModal = function(rowIndex) {
 
     viewMode.classList.remove('hidden');
     editMode.classList.add('hidden');
-
     document.getElementById('btn-modal-edit').classList.remove('hidden');
     document.getElementById('btn-modal-save').classList.add('hidden');
     document.getElementById('btn-modal-cancel').classList.add('hidden');
@@ -844,7 +828,6 @@ window.openWebModal = function(rowIndex) {
         noWeb.classList.remove('hidden');
         input.value = "";
     }
-
     document.getElementById('web-modal').classList.remove('hidden');
 };
 
@@ -860,15 +843,11 @@ function sendGlobalPostRequest(action, dataObj) {
     })
     .then(response => response.json())
     .then(res => {
-        if (res.status === "success") {
-            fetchFinancialData();
-        } else {
-            alert("Error al procesar: " + res.message);
-            toggleLoader(false);
-        }
+        if (res.status === "success") fetchFinancialData();
+        else { alert("Error al procesar: " + res.message); toggleLoader(false); }
     })
     .catch(err => {
-        alert("Error de conexión al guardar los datos.");
+        alert("Error de conexión al guardar.");
         toggleLoader(false);
     });
 }
