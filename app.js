@@ -3,23 +3,12 @@
 // ==========================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
 
-const GASTOS_CATEGORIES = [
-    "Alquiler Don Bosco 128 - UF1 y 2", "Alquiler Don Bosco 128 - UF3 y 4",
-    "Eden Don Bosco 128", "Eden Don Bosco 128 UF4", "Litoral Gas Don Bosco 128",
-    "Claro Tv - Internet", "Impuestos Inmobiliarios", "Alquiler Francia 172",
-    "Eden Francia 172", "Personal Flow", "Contador", "Abogado", "Seguros",
-    "Publicidad", "Reparaciones - Mantenimiento", "Habitat Ecologico",
-    "Tarjetas Nahuel", "Tarjetas Cesar", "Supermercado - Despensa",
-    "Pastas Fabiano", "Ecoquimica Tripiel", "Mudemed", "Fumigacion - Cordisco",
-    "Verduleria", "Galliteteria", "Insumos Enfermeria", "Gastos diarios y otros"
-];
-
 const MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 let appState = {
     balances: null,
     proveedores: [],
-    sueldos: {}, // { "2024": [ {rowIndex: 2, rowData: [...]}, ... ] }
+    sueldos: {}, 
     selectedMonth: "",
     selectedYear: "",
     historyMonth: "ALL",
@@ -43,8 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initTabs();
     setupEventListeners();
     setupWebModalHandlers();
-    populateSidebarHistory();
-    fetchFinancialData();
+    fetchFinancialData(); // Esta función ahora dibuja el menú lateral dinámicamente
 });
 
 function initTheme() {
@@ -62,14 +50,8 @@ function initTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        
-        if (isDark) {
-            moonIcon.classList.add('hidden');
-            sunIcon.classList.remove('hidden');
-        } else {
-            moonIcon.classList.remove('hidden');
-            sunIcon.classList.add('hidden');
-        }
+        if (isDark) { moonIcon.classList.add('hidden'); sunIcon.classList.remove('hidden'); } 
+        else { moonIcon.classList.remove('hidden'); sunIcon.classList.add('hidden'); }
     });
 }
 
@@ -84,16 +66,10 @@ function initNavModules() {
 
             const targetModule = e.target.getAttribute("data-module");
             modules.forEach(m => {
-                if (m.id === targetModule) {
-                    m.classList.remove("hidden");
-                    m.classList.add("active");
-                } else {
-                    m.classList.add("hidden");
-                    m.classList.remove("active");
-                }
+                if (m.id === targetModule) { m.classList.remove("hidden"); m.classList.add("active"); } 
+                else { m.classList.add("hidden"); m.classList.remove("active"); }
             });
 
-            // Si entra a sueldos, renderiza
             if (targetModule === "module-sueldos") renderSueldos();
         });
     });
@@ -104,17 +80,11 @@ function initSelectors() {
     const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
     const currentYear = String(today.getFullYear());
 
-    // Balances
-    document.getElementById("select-month").value = currentMonth;
-    document.getElementById("select-year").value = currentYear;
-    appState.selectedMonth = currentMonth;
-    appState.selectedYear = currentYear;
+    document.getElementById("select-month").value = currentMonth; document.getElementById("select-year").value = currentYear;
+    appState.selectedMonth = currentMonth; appState.selectedYear = currentYear;
 
-    // Sueldos
-    document.getElementById("sueldos-month").value = currentMonth;
-    document.getElementById("sueldos-year").value = currentYear;
-    appState.sueldosMonth = currentMonth;
-    appState.sueldosYear = currentYear;
+    document.getElementById("sueldos-month").value = currentMonth; document.getElementById("sueldos-year").value = currentYear;
+    appState.sueldosMonth = currentMonth; appState.sueldosYear = currentYear;
 }
 
 function initTabs() {
@@ -122,79 +92,80 @@ function initTabs() {
     const tabViews = document.querySelectorAll(".tab-view");
     const tabTitle = document.getElementById("tab-title");
     const tabSubtitle = document.getElementById("tab-subtitle");
-    const historyBtns = document.querySelectorAll(".history-btn");
 
     menuButtons.forEach(button => {
         button.addEventListener("click", () => {
             const targetTab = button.getAttribute("data-tab");
-
-            // Solo manejar pestañas si estamos en el módulo Balances
             if (!button.closest('#module-balances')) return;
 
             menuButtons.forEach(btn => { if(btn.closest('#module-balances')) btn.classList.remove("active"); });
-            historyBtns.forEach(btn => btn.classList.remove("active"));
+            document.querySelectorAll(".history-btn").forEach(btn => btn.classList.remove("active"));
             button.classList.add("active");
 
-            tabViews.forEach(view => {
-                if(view.closest('#module-balances')) {
-                    view.classList.toggle("active", view.id === `view-${targetTab}`);
-                }
-            });
+            tabViews.forEach(view => { if(view.closest('#module-balances')) view.classList.toggle("active", view.id === `view-${targetTab}`); });
 
-            if (targetTab === "balance") {
-                tabTitle.textContent = "Balance";
-                tabSubtitle.textContent = "Resumen consolidado de ingresos y gastos";
-            } else if (targetTab === "resumen-anual") {
-                tabTitle.textContent = "Resumen Anual";
-                tabSubtitle.textContent = "Acumulado de flujos anuales consolidados";
-                renderAnnualSummary();
-            }
+            if (targetTab === "balance") { tabTitle.textContent = "Balance"; tabSubtitle.textContent = "Resumen consolidado de ingresos y gastos"; } 
+            else if (targetTab === "resumen-anual") { tabTitle.textContent = "Resumen Anual"; tabSubtitle.textContent = "Acumulado de flujos anuales consolidados"; renderAnnualSummary(); }
         });
     });
 }
 
+// 100% DINÁMICO: Lee las pestañas que devolvió el servidor y arma los botones
 function populateSidebarHistory() {
     const gastosContainer = document.getElementById("sidebar-gastos-list");
     const ingresosContainer = document.getElementById("sidebar-ingresos-list");
-    
-    gastosContainer.innerHTML = "";
-    ingresosContainer.innerHTML = "";
+    gastosContainer.innerHTML = ""; ingresosContainer.innerHTML = "";
 
-    GASTOS_CATEGORIES.forEach(sheetName => {
+    if (!appState.balances) return;
+
+    // Crear botones de Gastos leyendo las llaves del objeto
+    Object.keys(appState.balances.gastos).forEach(sheetName => {
         const btn = document.createElement("button");
-        btn.className = "history-btn";
-        btn.textContent = sheetName;
-        btn.title = sheetName;
+        btn.className = "history-btn"; btn.textContent = sheetName; btn.title = sheetName;
         btn.addEventListener("click", () => openHistoryView(sheetName, "gastos", btn));
         gastosContainer.appendChild(btn);
     });
 
+    // Crear botón de Ingresos
     const btnIngreso = document.createElement("button");
-    btnIngreso.className = "history-btn";
-    btnIngreso.textContent = "Ingresos";
+    btnIngreso.className = "history-btn"; btnIngreso.textContent = "Ingresos";
     btnIngreso.addEventListener("click", () => openHistoryView("Ingresos", "ingresos", btnIngreso));
     ingresosContainer.appendChild(btnIngreso);
 }
 
 function setupEventListeners() {
-    // Balances
     document.getElementById("select-month").addEventListener("change", (e) => { appState.selectedMonth = e.target.value; renderBalance(); });
     document.getElementById("select-year").addEventListener("change", (e) => { appState.selectedYear = e.target.value; renderBalance(); if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); });
     
-    // Historial
     document.getElementById("historial-month").addEventListener("change", (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); });
     document.getElementById("historial-year").addEventListener("change", (e) => { appState.historyYear = e.target.value; renderHistoryTable(); });
 
-    // Sueldos
+    // GESTIÓN DINÁMICA DE PESTAÑAS (NUEVO)
+    document.getElementById("btn-add-tab-sheet").addEventListener("click", () => {
+        const newTab = prompt("Ingrese el nombre de la nueva cuenta (Ej: Gastos de Vehículo):");
+        if (!newTab || newTab.trim() === "") return;
+        if (newTab.trim().toLowerCase() === "ingresos") { alert("El nombre 'Ingresos' es de sistema y no se puede duplicar."); return; }
+        sendGlobalPostRequest("BAL_ADD_TAB", { sheetName: newTab.trim() });
+    });
+
+    document.getElementById("btn-del-tab-sheet").addEventListener("click", () => {
+        if (!appState.currentHistorySheet || appState.currentHistoryType === "ingresos") {
+            alert("Por favor, seleccione una cuenta de Gastos desde el Historial para eliminarla."); return;
+        }
+        if (confirm(`ATENCIÓN: ¿Eliminar definitivamente la cuenta '${appState.currentHistorySheet}' y todo su historial de Google Sheets?`)) {
+            sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet });
+            appState.currentHistorySheet = null; 
+            document.querySelector('.menu-btn[data-tab="balance"]').click(); // Volver al inicio
+        }
+    });
+
+    // Sueldos y Proveedores
     document.getElementById("sueldos-month").addEventListener("change", (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); });
     document.getElementById("sueldos-year").addEventListener("change", (e) => { appState.sueldosYear = e.target.value; renderSueldos(); });
-    
     document.getElementById("btn-sueldos-edit-mode").addEventListener("click", () => toggleSueldosEditMode(true));
     document.getElementById("btn-sueldos-cancel").addEventListener("click", () => toggleSueldosEditMode(false));
     document.getElementById("btn-sueldos-save").addEventListener("click", () => saveSueldos());
     document.getElementById("btn-sueldos-add").addEventListener("click", () => addSueldoEmptyRow());
-
-    // Globales
     document.getElementById("btn-refresh").addEventListener("click", () => fetchFinancialData());
     document.getElementById("btn-add-proveedor").addEventListener("click", () => addProveedorEmptyRow());
 
@@ -202,45 +173,22 @@ function setupEventListeners() {
     document.getElementById("global-file-input").addEventListener("change", function(e) {
         const file = e.target.files[0];
         if (!file || !appState.currentUpload) return;
-        
         toggleLoader(true, "Subiendo comprobante...");
         const reader = new FileReader();
         reader.onload = function(evt) {
             const base64String = evt.target.result.split(',')[1];
-            
             const typeKey = appState.currentUpload.categoryType; 
             const targetMap = appState.balances[typeKey][appState.currentUpload.sheetName];
             let folderId = "";
-
             for (let period in targetMap) {
                 let mov = targetMap[period].find(m => m.rowIndex === appState.currentUpload.rowIndex);
-                if (mov) {
-                    folderId = appState.currentUpload.type === "compra" ? mov.idCarpetaCompra : mov.idCarpetaVenta;
-                    break;
-                }
+                if (mov) { folderId = appState.currentUpload.type === "compra" ? mov.idCarpetaCompra : mov.idCarpetaVenta; break; }
             }
-
-            const payload = {
-                action: "UPLOAD_FILE",
-                data: {
-                    sheetName: appState.currentUpload.sheetName,
-                    rowIndex: appState.currentUpload.rowIndex,
-                    type: appState.currentUpload.type,
-                    folderId: folderId || "",
-                    fileName: file.name,
-                    mimeType: file.type,
-                    fileBase64: base64String
-                }
-            };
-
+            const payload = { action: "UPLOAD_FILE", data: { sheetName: appState.currentUpload.sheetName, rowIndex: appState.currentUpload.rowIndex, type: appState.currentUpload.type, folderId: folderId || "", fileName: file.name, mimeType: file.type, fileBase64: base64String } };
             fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
             .then(res => res.json())
-            .then(data => {
-                if(data.status === "success") fetchFinancialData();
-                else { alert("Error al subir archivo: " + data.message); toggleLoader(false); }
-            })
+            .then(data => { if(data.status === "success") fetchFinancialData(); else { alert("Error al subir: " + data.message); toggleLoader(false); } })
             .catch(err => { alert("Error de conexión al subir."); toggleLoader(false); });
-            
             document.getElementById("global-file-input").value = "";
         };
         reader.readAsDataURL(file);
@@ -250,19 +198,14 @@ function setupEventListeners() {
 function setupWebModalHandlers() {
     document.getElementById('btn-modal-close').onclick = () => document.getElementById('web-modal').classList.add('hidden');
     document.getElementById('btn-modal-edit').onclick = function() {
-        document.getElementById('web-view-mode').classList.add('hidden');
-        document.getElementById('web-edit-mode').classList.remove('hidden');
-        this.classList.add('hidden');
-        document.getElementById('btn-modal-save').classList.remove('hidden');
-        document.getElementById('btn-modal-cancel').classList.remove('hidden');
+        document.getElementById('web-view-mode').classList.add('hidden'); document.getElementById('web-edit-mode').classList.remove('hidden');
+        this.classList.add('hidden'); document.getElementById('btn-modal-save').classList.remove('hidden'); document.getElementById('btn-modal-cancel').classList.remove('hidden');
     };
     document.getElementById('btn-modal-cancel').onclick = () => window.openWebModal(appState.activeProvRowIndex);
     document.getElementById('btn-modal-save').onclick = function() {
         const newVal = document.getElementById('modal-web-input').value;
-        const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex);
-        prov.web = newVal;
-        sendGlobalPostRequest("PROV_EDIT", prov);
-        document.getElementById('web-modal').classList.add('hidden');
+        const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex); prov.web = newVal;
+        sendGlobalPostRequest("PROV_EDIT", prov); document.getElementById('web-modal').classList.add('hidden');
     };
 }
 
@@ -270,11 +213,9 @@ function setupAccordions(container) {
     const headers = container.querySelectorAll(".accordion-header");
     headers.forEach(header => {
         header.addEventListener("click", function() {
-            const item = this.parentElement;
-            const body = this.nextElementSibling;
+            const item = this.parentElement; const body = this.nextElementSibling;
             item.classList.toggle("open");
-            if (item.classList.contains("open")) body.style.maxHeight = body.scrollHeight + "px";
-            else body.style.maxHeight = null;
+            if (item.classList.contains("open")) body.style.maxHeight = body.scrollHeight + "px"; else body.style.maxHeight = null;
         });
     });
 }
@@ -283,8 +224,7 @@ function setupAccordions(container) {
 // UTILIDADES
 // ==========================================
 function toggleLoader(show, msg = "Cargando base de datos...") {
-    const loader = document.getElementById("main-loader");
-    const msgEl = document.getElementById("loader-msg");
+    const loader = document.getElementById("main-loader"); const msgEl = document.getElementById("loader-msg");
     if(msgEl) msgEl.textContent = msg;
     show ? loader.classList.remove("hidden") : loader.classList.add("hidden");
 }
@@ -305,8 +245,7 @@ function formatFinalBalance(value) {
 // ==========================================
 function fetchFinancialData() {
     toggleLoader(true);
-    const errContainer = document.getElementById("error-container");
-    if(errContainer) errContainer.classList.add("hidden");
+    const errContainer = document.getElementById("error-container"); if(errContainer) errContainer.classList.add("hidden");
 
     fetch(API_URL)
         .then(response => { if (!response.ok) throw new Error("Error HTTP"); return response.json(); })
@@ -316,10 +255,10 @@ function fetchFinancialData() {
                 appState.proveedores = json.data.proveedores || [];
                 appState.sueldos = json.data.sueldos || {};
                 
+                populateSidebarHistory(); // Construye el menú de cuentas dinámico
                 renderBalance();
                 renderProveedores();
                 if (document.getElementById("module-sueldos").classList.contains("active")) renderSueldos();
-                
                 if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
                 if (appState.currentHistorySheet) renderHistoryTable(); 
             } else { throw new Error(json.message); }
@@ -333,18 +272,15 @@ function fetchFinancialData() {
 }
 
 // ==========================================
-// MÓDULOS: BALANCES Y PROVEEDORES (Existentes)
+// MÓDULO: BALANCES 
 // ==========================================
-// (Se omite la re-explicación, pero el código es exacto al que ya tenías para Balances y Proveedores)
-// [MANTENER TODO EL CÓDIGO DE renderBalance, renderAnnualSummary, openHistoryView, renderHistoryTable, createBalanceRowHTML, renderProveedores, etc.]
-
 function renderBalance() {
     if (!appState.balances) return;
     const periodKey = `${appState.selectedYear}-${appState.selectedMonth}`;
     let grandTotalGastos = 0; let grandTotalIngresos = 0; let movimientosCount = 0;
     const gastosList = document.getElementById("gastos-list"); gastosList.innerHTML = "";
 
-    GASTOS_CATEGORIES.forEach(sheetName => {
+    Object.keys(appState.balances.gastos).forEach(sheetName => {
         const periodData = appState.balances.gastos[sheetName]?.[periodKey];
         if (!periodData || periodData.length === 0) return; 
         let categoryTotal = 0; let rowsHtml = "";
@@ -381,7 +317,7 @@ function renderAnnualSummary() {
     if (!appState.balances) return;
     const selectedYear = appState.selectedYear;
     let annualGastosTotal = 0; let annualIngresosTotal = 0;
-    GASTOS_CATEGORIES.forEach(sheetName => { const sheetMonths = appState.balances.gastos[sheetName] || {}; for (const periodKey in sheetMonths) { if (periodKey.startsWith(`${selectedYear}-`)) { sheetMonths[periodKey].forEach(mov => { annualGastosTotal += Math.abs(mov.monto); }); } } });
+    Object.keys(appState.balances.gastos).forEach(sheetName => { const sheetMonths = appState.balances.gastos[sheetName] || {}; for (const periodKey in sheetMonths) { if (periodKey.startsWith(`${selectedYear}-`)) { sheetMonths[periodKey].forEach(mov => { annualGastosTotal += Math.abs(mov.monto); }); } } });
     const ingresosMonths = appState.balances.ingresos["Ingresos"] || {}; for (const periodKey in ingresosMonths) { if (periodKey.startsWith(`${selectedYear}-`)) { ingresosMonths[periodKey].forEach(mov => { annualIngresosTotal += mov.monto; }); } }
     const annualNet = annualIngresosTotal - annualGastosTotal;
     document.getElementById("annual-ingresos").textContent = formatArgentineCurrency(annualIngresosTotal); document.getElementById("annual-gastos").textContent = formatArgentineCurrency(annualGastosTotal);
@@ -451,54 +387,25 @@ window.openWebModal = function(rowIndex) { appState.activeProvRowIndex = rowInde
 // MÓDULO 3: SUELDOS (RRHH)
 // ==========================================
 function renderSueldos() {
-    const year = appState.sueldosYear;
-    const month = parseInt(appState.sueldosMonth) - 1; // 0 para Enero, 11 para Diciembre
-    const offset = month * 14;
-
-    const thead = document.getElementById("sueldos-thead");
-    const tbody = document.getElementById("sueldos-tbody");
-    const emptyState = document.getElementById("sueldos-empty-state");
-    const tableCard = document.getElementById("sueldos-card-content");
-
-    // Limpiar pantalla
-    thead.innerHTML = "";
-    tbody.innerHTML = "";
+    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14;
+    const thead = document.getElementById("sueldos-thead"); const tbody = document.getElementById("sueldos-tbody"); const emptyState = document.getElementById("sueldos-empty-state"); const tableCard = document.getElementById("sueldos-card-content");
+    thead.innerHTML = ""; tbody.innerHTML = "";
     
-    // Obtener trabajadores del año. Si no existe el año, asumimos vacío.
     let yearData = appState.sueldos[year] || [];
-    
-    // Filtrar trabajadores activos (que tengan AL MENOS un dato que no sea "-" en este mes, o que sea su mes de creación)
-    // El prompt indica: "Los meses completados con "-" no deben mostrarse".
-    // Si estamos en modo edición, mostramos a todos los que tienen la fila creada (para poder editarlos o borrarlos).
     let activeWorkers = [];
-    if (appState.sueldosEditMode) {
-        activeWorkers = yearData; 
-    } else {
+    if (appState.sueldosEditMode) { activeWorkers = yearData; } 
+    else {
         activeWorkers = yearData.filter(worker => {
             const dataMes = worker.rowData.slice(offset, offset + 14);
-            // Consideramos inactivo si el sueldo y nombre están vacíos o con "-"
-            const hasData = dataMes.some(val => val !== "" && val !== "-");
-            return hasData;
+            return dataMes.some(val => val !== "" && val !== "-");
         });
     }
 
-    if (activeWorkers.length === 0 && !appState.sueldosEditMode) {
-        emptyState.classList.remove("hidden");
-        tableCard.classList.add("hidden");
-        return;
-    } else {
-        emptyState.classList.add("hidden");
-        tableCard.classList.remove("hidden");
-    }
+    if (activeWorkers.length === 0 && !appState.sueldosEditMode) { emptyState.classList.remove("hidden"); tableCard.classList.add("hidden"); return; } 
+    else { emptyState.classList.add("hidden"); tableCard.classList.remove("hidden"); }
 
-    // Ordenar alfabéticamente por nombre
-    activeWorkers.sort((a, b) => {
-        const nameA = (a.rowData[offset] || "").toString().toLowerCase();
-        const nameB = (b.rowData[offset] || "").toString().toLowerCase();
-        return nameA.localeCompare(nameB);
-    });
+    activeWorkers.sort((a, b) => { const nameA = (a.rowData[offset] || "").toString().toLowerCase(); const nameB = (b.rowData[offset] || "").toString().toLowerCase(); return nameA.localeCompare(nameB); });
 
-    // Calcular cuántos adelantos mostrar
     let maxAdelantos = 0;
     activeWorkers.forEach(w => {
         if (w.rowData[offset + 4] !== "" && w.rowData[offset + 4] !== "-") maxAdelantos = Math.max(maxAdelantos, 1);
@@ -506,88 +413,32 @@ function renderSueldos() {
         if (w.rowData[offset + 8] !== "" && w.rowData[offset + 8] !== "-") maxAdelantos = Math.max(maxAdelantos, 3);
     });
 
-    // --- CONSTRUIR CABECERA DINÁMICA ---
-    let thHtml = `<tr>
-        <th class="text-left">Nombre</th>
-        <th class="text-left">Mes</th>
-        <th class="text-center">Horas</th>
-        <th class="text-right">Precio/Hora</th>`;
-        
+    let thHtml = `<tr><th class="text-left">Nombre</th><th class="text-left">Mes</th><th class="text-center">Horas</th><th class="text-right">Precio/Hora</th>`;
     if (maxAdelantos >= 1) thHtml += `<th class="text-right">Adelanto 1</th><th class="text-left">F. Ad1</th>`;
     if (maxAdelantos >= 2) thHtml += `<th class="text-right">Adelanto 2</th><th class="text-left">F. Ad2</th>`;
     if (maxAdelantos === 3) thHtml += `<th class="text-right">Adelanto 3</th><th class="text-left">F. Ad3</th>`;
+    thHtml += `<th class="text-left">Método Pago</th><th class="text-left">F. Pago</th><th class="text-right">Sueldo Final</th>`;
+    if (appState.sueldosEditMode) thHtml += `<th class="text-center sticky-col">Acciones</th>`;
+    thHtml += `</tr>`; thead.innerHTML = thHtml;
 
-    thHtml += `
-        <th class="text-left">Método Pago</th>
-        <th class="text-left">F. Pago</th>
-        <th class="text-right">Sueldo Final</th>
-    `;
-    
-    if (appState.sueldosEditMode) {
-        thHtml += `<th class="text-center sticky-col">Acciones</th>`;
-    }
-    thHtml += `</tr>`;
-    thead.innerHTML = thHtml;
-
-    // --- CONSTRUIR FILAS ---
-    activeWorkers.forEach((worker, arrIndex) => {
-        const tr = document.createElement("tr");
-        const rData = worker.rowData;
-        
-        // Si estamos en modo edición, dibujamos inputs
+    activeWorkers.forEach((worker) => {
+        const tr = document.createElement("tr"); const rData = worker.rowData;
         if (appState.sueldosEditMode) {
-            let rowHtml = `
-                <td><input type="text" class="edit-input s-nom" value="${rData[offset] || ''}"></td>
-                <td><input type="text" class="edit-input s-mes" value="${MESES_NOMBRES[month]}"></td>
-                <td><input type="text" class="edit-input s-hor" value="${rData[offset+2] || ''}" style="text-align:center;"></td>
-                <td><input type="number" step="0.01" class="edit-input s-ph" value="${rData[offset+3] || ''}"></td>
-            `;
+            let rowHtml = `<td><input type="text" class="edit-input s-nom" value="${rData[offset] || ''}"></td><td><input type="text" class="edit-input s-mes" value="${MESES_NOMBRES[month]}"></td><td><input type="text" class="edit-input s-hor" value="${rData[offset+2] || ''}" style="text-align:center;"></td><td><input type="number" step="0.01" class="edit-input s-ph" value="${rData[offset+3] || ''}"></td>`;
             if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${rData[offset+4] || ''}"></td><td><input type="text" class="edit-input s-fa1" value="${rData[offset+5] || ''}" placeholder="DD/MM"></td>`;
             if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${rData[offset+6] || ''}"></td><td><input type="text" class="edit-input s-fa2" value="${rData[offset+7] || ''}" placeholder="DD/MM"></td>`;
             if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${rData[offset+8] || ''}"></td><td><input type="text" class="edit-input s-fa3" value="${rData[offset+9] || ''}" placeholder="DD/MM"></td>`;
-
-            rowHtml += `
-                <td>
-                    <div style="display:flex; gap:4px; flex-direction:column;">
-                        <input type="number" step="0.01" class="edit-input s-me" value="${rData[offset+10] || ''}" placeholder="$ Efvo">
-                        <input type="number" step="0.01" class="edit-input s-mt" value="${rData[offset+11] || ''}" placeholder="$ Trans">
-                    </div>
-                </td>
-                <td><input type="text" class="edit-input s-fp" value="${rData[offset+12] || ''}" placeholder="DD/MM"></td>
-                <td><input type="number" step="0.01" class="edit-input s-sue" value="${rData[offset+13] || ''}"></td>
-                <td class="action-buttons sticky-col">
-                    <button class="action-btn btn-delete" onclick="archiveWorker(${worker.rowIndex})">Archivar</button>
-                </td>
-            `;
-            // Guardamos el rowIndex como atributo para poder recolectarlo al guardar
-            tr.setAttribute("data-row-index", worker.rowIndex || "NEW");
-            tr.innerHTML = rowHtml;
+            rowHtml += `<td><div style="display:flex; gap:4px; flex-direction:column;"><input type="number" step="0.01" class="edit-input s-me" value="${rData[offset+10] || ''}" placeholder="$ Efvo"><input type="number" step="0.01" class="edit-input s-mt" value="${rData[offset+11] || ''}" placeholder="$ Trans"></div></td><td><input type="text" class="edit-input s-fp" value="${rData[offset+12] || ''}" placeholder="DD/MM"></td><td><input type="number" step="0.01" class="edit-input s-sue" value="${rData[offset+13] || ''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="archiveWorker(${worker.rowIndex})">Archivar</button></td>`;
+            tr.setAttribute("data-row-index", worker.rowIndex || "NEW"); tr.innerHTML = rowHtml;
         } 
         else {
-            // MODO LECTURA
-            let methodStr = "-";
-            const valE = Number(rData[offset+10]);
-            const valT = Number(rData[offset+11]);
-            
-            if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`;
-            else if (valE > 0) methodStr = `Efectivo`;
-            else if (valT > 0) methodStr = `Transferencia`;
-
-            let rowHtml = `
-                <td class="text-left" style="font-weight:600;">${rData[offset] || '-'}</td>
-                <td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td>
-                <td class="text-center">${rData[offset+2] || '-'}</td>
-                <td class="text-right">${formatArgentineCurrency(rData[offset+3])}</td>
-            `;
+            let methodStr = "-"; const valE = Number(rData[offset+10]); const valT = Number(rData[offset+11]);
+            if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
+            let rowHtml = `<td class="text-left" style="font-weight:600;">${rData[offset] || '-'}</td><td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td><td class="text-center">${rData[offset+2] || '-'}</td><td class="text-right">${formatArgentineCurrency(rData[offset+3])}</td>`;
             if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+4])}</td><td class="text-left">${rData[offset+5] || '-'}</td>`;
             if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+6])}</td><td class="text-left">${rData[offset+7] || '-'}</td>`;
             if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+8])}</td><td class="text-left">${rData[offset+9] || '-'}</td>`;
-
-            rowHtml += `
-                <td class="text-left" style="font-size: 8.5pt;">${methodStr}</td>
-                <td class="text-left">${rData[offset+12] || '-'}</td>
-                <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(rData[offset+13])}</td>
-            `;
+            rowHtml += `<td class="text-left" style="font-size: 8.5pt;">${methodStr}</td><td class="text-left">${rData[offset+12] || '-'}</td><td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(rData[offset+13])}</td>`;
             tr.innerHTML = rowHtml;
         }
         tbody.appendChild(tr);
@@ -596,147 +447,67 @@ function renderSueldos() {
 
 function toggleSueldosEditMode(isEdit) {
     appState.sueldosEditMode = isEdit;
-    
-    const btnEdit = document.getElementById("btn-sueldos-edit-mode");
-    const btnSave = document.getElementById("btn-sueldos-save");
-    const btnCancel = document.getElementById("btn-sueldos-cancel");
-    
-    if (isEdit) {
-        btnEdit.classList.add("hidden");
-        btnSave.classList.remove("hidden");
-        btnCancel.classList.remove("hidden");
-    } else {
-        btnEdit.classList.remove("hidden");
-        btnSave.classList.add("hidden");
-        btnCancel.classList.add("hidden");
-    }
-    
+    const btnEdit = document.getElementById("btn-sueldos-edit-mode"); const btnSave = document.getElementById("btn-sueldos-save"); const btnCancel = document.getElementById("btn-sueldos-cancel");
+    if (isEdit) { btnEdit.classList.add("hidden"); btnSave.classList.remove("hidden"); btnCancel.classList.remove("hidden"); } 
+    else { btnEdit.classList.remove("hidden"); btnSave.classList.add("hidden"); btnCancel.classList.add("hidden"); }
     renderSueldos();
 }
 
 function addSueldoEmptyRow() {
-    // Si no estamos en modo edición, forzamos la entrada
-    if (!appState.sueldosEditMode) {
-        toggleSueldosEditMode(true);
-    }
-    
+    if (!appState.sueldosEditMode) toggleSueldosEditMode(true);
     const year = appState.sueldosYear;
     if (!appState.sueldos[year]) appState.sueldos[year] = [];
-    
-    // Creamos matriz de 168 elementos vacíos con "-"
-    let newRow = Array(168).fill("-");
-    const month = parseInt(appState.sueldosMonth) - 1;
-    const offset = month * 14;
-    
-    // Limpiamos el mes actual para que lo escriba
+    let newRow = Array(168).fill("-"); const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14;
     for(let i=0; i<14; i++) newRow[offset + i] = "";
     newRow[offset + 1] = MESES_NOMBRES[month];
-
     appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow });
     renderSueldos();
 }
 
 function archiveWorker(rowIndex) {
     if(!confirm("¿Archivar trabajador? Se completará con '-' los meses restantes y dejará de aparecer.")) return;
-    
-    const year = appState.sueldosYear;
-    const month = parseInt(appState.sueldosMonth) - 1;
-    const offset = month * 14;
-
-    let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex);
-    if (!worker) return;
-
-    // Completar el mes actual y futuros con "-"
-    for (let i = offset; i < 168; i++) {
-        worker.rowData[i] = "-";
-    }
-
-    sendSueldosPostRequest("SUELDO_SAVE_ROW", {
-        year: year,
-        rowIndex: rowIndex,
-        rowData: worker.rowData
-    });
+    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14;
+    let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); if (!worker) return;
+    for (let i = offset; i < 168; i++) worker.rowData[i] = "-";
+    sendSueldosPostRequest("SUELDO_SAVE_ROW", { year: year, rowIndex: rowIndex, rowData: worker.rowData });
 }
 
 async function saveSueldos() {
-    const tbody = document.getElementById("sueldos-tbody");
-    const rows = tbody.querySelectorAll("tr");
-    const year = appState.sueldosYear;
-    const month = parseInt(appState.sueldosMonth) - 1;
-    const offset = month * 14;
-
+    const tbody = document.getElementById("sueldos-tbody"); const rows = tbody.querySelectorAll("tr");
+    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14;
     toggleLoader(true, "Guardando nómina...");
-
     try {
-        // Enviar modificaciones una por una (el backend puede manejar peticiones secuenciales)
         for (let tr of rows) {
             let rowIndex = tr.getAttribute("data-row-index");
-            if (rowIndex === "NEW") rowIndex = null; // Es nuevo
-            else rowIndex = parseInt(rowIndex);
-
-            // Rescatar su rowData histórico
-            let workerObj = null;
-            if (rowIndex) {
-                workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex);
-            }
-            
+            if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex);
+            let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex);
             let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill("-");
 
-            // Función segura para leer inputs (si la columna estaba oculta por falta de adelantos, devuelve "")
             const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; };
+            finalRowData[offset] = getVal('.s-nom'); finalRowData[offset+1] = getVal('.s-mes'); finalRowData[offset+2] = getVal('.s-hor'); finalRowData[offset+3] = getVal('.s-ph');
+            finalRowData[offset+4] = getVal('.s-a1') || finalRowData[offset+4]; finalRowData[offset+5] = getVal('.s-fa1') || finalRowData[offset+5];
+            finalRowData[offset+6] = getVal('.s-a2') || finalRowData[offset+6]; finalRowData[offset+7] = getVal('.s-fa2') || finalRowData[offset+7];
+            finalRowData[offset+8] = getVal('.s-a3') || finalRowData[offset+8]; finalRowData[offset+9] = getVal('.s-fa3') || finalRowData[offset+9];
+            finalRowData[offset+10] = getVal('.s-me'); finalRowData[offset+11] = getVal('.s-mt'); finalRowData[offset+12] = getVal('.s-fp'); finalRowData[offset+13] = getVal('.s-sue');
 
-            // Escribir la data del mes
-            finalRowData[offset] = getVal('.s-nom');
-            finalRowData[offset+1] = getVal('.s-mes');
-            finalRowData[offset+2] = getVal('.s-hor');
-            finalRowData[offset+3] = getVal('.s-ph');
-            
-            // Si el input no existe (columna oculta dinámicamente), conservamos lo que tenía (o "")
-            finalRowData[offset+4] = getVal('.s-a1') || finalRowData[offset+4];
-            finalRowData[offset+5] = getVal('.s-fa1') || finalRowData[offset+5];
-            finalRowData[offset+6] = getVal('.s-a2') || finalRowData[offset+6];
-            finalRowData[offset+7] = getVal('.s-fa2') || finalRowData[offset+7];
-            finalRowData[offset+8] = getVal('.s-a3') || finalRowData[offset+8];
-            finalRowData[offset+9] = getVal('.s-fa3') || finalRowData[offset+9];
-            
-            finalRowData[offset+10] = getVal('.s-me');
-            finalRowData[offset+11] = getVal('.s-mt');
-            finalRowData[offset+12] = getVal('.s-fp');
-            finalRowData[offset+13] = getVal('.s-sue');
-
-            // Propagar el nombre a todos los meses (para mantener consistencia)
             const nombre = finalRowData[offset];
             for (let m = 0; m < 12; m++) finalRowData[m * 14] = nombre;
 
-            // Esperar que guarde antes de mandar el siguiente (para no saturar Apps Script)
-            await fetch(API_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    action: "SUELDO_SAVE_ROW",
-                    data: { year: year, rowIndex: rowIndex, rowData: finalRowData }
-                })
-            });
+            await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: finalRowData } }) });
         }
-
-        // Al finalizar todo, recargar base de datos y salir de modo edición
-        toggleSueldosEditMode(false);
-        fetchFinancialData();
-
-    } catch (error) {
-        alert("Ocurrió un error al guardar los sueldos. Se canceló el proceso.");
-        toggleLoader(false);
-    }
+        toggleSueldosEditMode(false); fetchFinancialData();
+    } catch (error) { alert("Ocurrió un error al guardar los sueldos. Se canceló el proceso."); toggleLoader(false); }
 }
 
 // ==========================================
 // RED GLOBAL (FETCH POST genérico)
 // ==========================================
 function sendGlobalPostRequest(action, dataObj) {
-    toggleLoader(true, "Guardando cambios...");
+    toggleLoader(true, "Procesando petición...");
     fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) })
     .then(res => res.json())
     .then(res => { if (res.status === "success") fetchFinancialData(); else { alert("Error al procesar: " + res.message); toggleLoader(false); } })
-    .catch(err => { alert("Error de conexión al guardar."); toggleLoader(false); });
+    .catch(err => { alert("Error de conexión."); toggleLoader(false); });
 }
 
 function sendSueldosPostRequest(action, dataObj) {
@@ -744,5 +515,5 @@ function sendSueldosPostRequest(action, dataObj) {
     fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) })
     .then(res => res.json())
     .then(res => { if (res.status === "success") fetchFinancialData(); else { alert("Error: " + res.message); toggleLoader(false); } })
-    .catch(err => { alert("Error de conexión al guardar."); toggleLoader(false); });
+    .catch(err => { alert("Error de conexión."); toggleLoader(false); });
 }
