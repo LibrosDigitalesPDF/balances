@@ -53,19 +53,17 @@ function formatDateToAR(dateStr) {
     return str.split(" ")[0];
 }
 
-// Convertidor robusto de Monedas (Interpreta puntos, comas y signos de cualquier formato)
+// Convertidor robusto de Monedas (Interpreta puntos, comas y signos)
 function parseMonto(val) {
     if (val === "" || val === null || val === undefined || val === "-") return 0;
     if (typeof val === 'number') return val;
     let str = val.toString().trim();
-    
-    str = str.replace(/[^0-9.,-]/g, ''); // Limpia letras o signos $
-    
+    str = str.replace(/[^0-9.,-]/g, ''); 
     if (str.includes(',') && str.includes('.')) {
         const lastComma = str.lastIndexOf(',');
         const lastDot = str.lastIndexOf('.');
-        if (lastComma > lastDot) { str = str.replace(/\./g, '').replace(',', '.'); } // 1.500,50
-        else { str = str.replace(/,/g, ''); } // 1,500.50
+        if (lastComma > lastDot) { str = str.replace(/\./g, '').replace(',', '.'); } 
+        else { str = str.replace(/,/g, ''); } 
     } 
     else if (str.includes(',')) { str = str.replace(',', '.'); } 
     else if (str.includes('.')) {
@@ -116,7 +114,7 @@ function injectSueldosIntoBalances() {
     const gastosSueldos = appState.balances.gastos["Liquidación de Sueldos"];
 
     Object.keys(appState.sueldos).forEach(year => {
-        appState.sueldos[year].forEach(worker => {
+        appState.sueldos[year].forEach((worker, wIndex) => {
             const rData = worker.rowData;
             
             for (let m = 0; m < 12; m++) {
@@ -126,6 +124,7 @@ function injectSueldosIntoBalances() {
 
                 const monthStr = String(m + 1).padStart(2, '0');
                 const periodKey = `${year}-${monthStr}`;
+                if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
                 
                 let methodStr = "-"; 
                 const valE = parseMonto(rData[offset+10]); 
@@ -134,33 +133,44 @@ function injectSueldosIntoBalances() {
                 else if (valE > 0) methodStr = "Efectivo"; 
                 else if (valT > 0) methodStr = "Transferencia";
 
-                // Procesamos TODOS los pagos (Adelantos + Sueldo) como entidades separadas
-                const pagos = [
-                    { tipo: "Adelanto 1", montoIdx: 4, fechaIdx: 5 },
-                    { tipo: "Adelanto 2", montoIdx: 6, fechaIdx: 7 },
-                    { tipo: "Adelanto 3", montoIdx: 8, fechaIdx: 9 },
-                    { tipo: "Sueldo Final", montoIdx: 13, fechaIdx: 12 }
+                // Sueldo Final
+                const sueldoNum = parseMonto(rData[offset + 13]);
+                const fechaRawSueldo = rData[offset + 12];
+                if (sueldoNum > 0) {
+                    gastosSueldos[periodKey].push({
+                        rowIndex: `s_${wIndex}_${m}_SF`, // Identificador único virtual para que no se pisen
+                        fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${year}`,
+                        detalle: nombre, // Mostramos solo el nombre en el historial
+                        monto: sueldoNum,
+                        mes: MESES_NOMBRES[m],
+                        metodoPago: methodStr,
+                        precioHora: rData[offset+3] || "-",
+                        horas: rData[offset+2] || "-",
+                        operacion: "Sueldo Final",
+                        isVirtual: true 
+                    });
+                }
+
+                // Adelantos
+                const adelantos = [
+                    { tipo: "Adelanto 1", mIdx: 4, fIdx: 5 },
+                    { tipo: "Adelanto 2", mIdx: 6, fIdx: 7 },
+                    { tipo: "Adelanto 3", mIdx: 8, fIdx: 9 }
                 ];
 
-                pagos.forEach(pago => {
-                    const monto = parseMonto(rData[offset + pago.montoIdx]);
-                    const fechaRaw = rData[offset + pago.fechaIdx];
-
-                    if (monto > 0) {
-                        if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
-                        
-                        const fechaLimpia = formatDateToAR(fechaRaw) || `01/${monthStr}/${year}`;
-                        
+                adelantos.forEach((ad, aIndex) => {
+                    const adMonto = parseMonto(rData[offset + ad.mIdx]);
+                    if (adMonto > 0) {
                         gastosSueldos[periodKey].push({
-                            rowIndex: null, 
-                            fecha: fechaLimpia,
-                            detalle: `${pago.tipo} - ${nombre}`, // Ej: "Adelanto 1 - Juan" o "Sueldo Final - Juan"
-                            monto: monto,
+                            rowIndex: `s_${wIndex}_${m}_A${aIndex}`,
+                            fecha: formatDateToAR(rData[offset + ad.fIdx]) || `01/${monthStr}/${year}`,
+                            detalle: `${nombre} (${ad.tipo})`,
+                            monto: adMonto,
                             mes: MESES_NOMBRES[m],
                             metodoPago: methodStr,
-                            precioHora: rData[offset+3] || "-",
-                            horas: rData[offset+2] || "-",
-                            operacion: "Liquidación RRHH",
+                            precioHora: "-",
+                            horas: "-",
+                            operacion: ad.tipo,
                             isVirtual: true 
                         });
                     }
@@ -268,9 +278,7 @@ function fetchFinancialData() {
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
-            
             injectSueldosIntoBalances();
-            
             populateSidebarHistory(); renderBalance(); renderProveedores();
             if (document.getElementById("module-sueldos").classList.contains("active")) renderSueldos();
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
@@ -334,7 +342,7 @@ function openHistoryView(s, t, b) {
         document.getElementById("carpetas-config-section").classList.add("hidden");
         theadTr.innerHTML = `
             <th class="text-left">Nombre</th>
-            <th class="text-right">Monto</th>
+            <th class="text-right">Sueldo</th>
             <th class="text-left">Fecha de Pago</th>
             <th class="text-left">Mes</th>
             <th class="text-left">Método Pago</th>
@@ -366,9 +374,6 @@ function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
     const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
 
-    const colAcciones = document.getElementById("col-acciones-historial");
-    if(colAcciones) colAcciones.classList.toggle("hidden", s === "Liquidación de Sueldos");
-
     for (const p in tm) { const [y, m] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== m) continue; if (tm[p]) fm = fm.concat(tm[p]); }
     if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
     else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m, false, s, t)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); }
@@ -398,7 +403,6 @@ function createBalanceRowHTML(m, edit, s, t) {
     } 
     return tr;
 }
-
 function addBalanceEmptyRow(s, t) { const tb = document.getElementById("historial-tbody"); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); tb.insertBefore(createBalanceRowHTML({ fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }, true, s, t), tb.firstChild); }
 window.editBalance = function(ri, s, t) { let tm; const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) tm = m; } if (!tm) return; const tb = document.getElementById("historial-tbody"); const r = Array.from(tb.querySelectorAll("tr")); const idx = r.findIndex(x => x.querySelector(`button[onclick*="${ri}"]`)); if (idx > -1) tb.replaceChild(createBalanceRowHTML(tm, true, s, t), r[idx]); };
 window.saveBalance = function(b, ri, s, t) { const tr = b.closest("tr"); let rm = tr.querySelector(".i-mon").value; if (t === 'gastos' && rm > 0) rm = -rm; let cc = "", cp = ""; if (ri) { const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } } const py = { rowIndex: ri, sheetName: s, fecha: tr.querySelector(".i-fec").value, detalle: tr.querySelector(".i-det").value, monto: rm, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idComprobanteCompra: cc, idComprobantePago: cp }; sendGlobalPostRequest(ri ? "BAL_EDIT" : "BAL_ADD", py); };
@@ -570,9 +574,9 @@ function renderSueldos() {
     
     let maxAdelantos = 0; 
     activeWorkers.forEach(w => { 
-        if (w.rowData[offset + 4] !== "" && w.rowData[offset + 4] !== "-") maxAdelantos = Math.max(maxAdelantos, 1); 
-        if (w.rowData[offset + 6] !== "" && w.rowData[offset + 6] !== "-") maxAdelantos = Math.max(maxAdelantos, 2); 
-        if (w.rowData[offset + 8] !== "" && w.rowData[offset + 8] !== "-") maxAdelantos = Math.max(maxAdelantos, 3); 
+        if (parseMonto(w.rowData[offset + 4]) > 0) maxAdelantos = Math.max(maxAdelantos, 1); 
+        if (parseMonto(w.rowData[offset + 6]) > 0) maxAdelantos = Math.max(maxAdelantos, 2); 
+        if (parseMonto(w.rowData[offset + 8]) > 0) maxAdelantos = Math.max(maxAdelantos, 3); 
     });
     
     let thHtml = `
@@ -602,44 +606,44 @@ function renderSueldos() {
         if (appState.sueldosEditMode) {
             let rowHtml = `
                 <td><input type="text" class="edit-input s-nom" value="${rData[offset] || ''}"></td>
-                <td><input type="number" step="0.01" class="edit-input s-sue" value="${rData[offset+13] || ''}"></td>
+                <td><input type="number" step="0.01" class="edit-input s-sue" value="${parseMonto(rData[offset+13]) || ''}"></td>
                 <td><input type="text" class="edit-input s-fp" value="${formatDateToAR(rData[offset+12])}" placeholder="DD/MM/AAAA"></td>
                 <td><input type="text" class="edit-input s-mes" value="${rData[offset+1] || MESES_NOMBRES[month]}"></td>`;
                 
-            if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${rData[offset+4] || ''}"></td><td><input type="text" class="edit-input s-fa1" value="${formatDateToAR(rData[offset+5])}" placeholder="DD/MM/AAAA"></td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${rData[offset+6] || ''}"></td><td><input type="text" class="edit-input s-fa2" value="${formatDateToAR(rData[offset+7])}" placeholder="DD/MM/AAAA"></td>`;
-            if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${rData[offset+8] || ''}"></td><td><input type="text" class="edit-input s-fa3" value="${formatDateToAR(rData[offset+9])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${parseMonto(rData[offset+4]) || ''}"></td><td><input type="text" class="edit-input s-fa1" value="${formatDateToAR(rData[offset+5])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${parseMonto(rData[offset+6]) || ''}"></td><td><input type="text" class="edit-input s-fa2" value="${formatDateToAR(rData[offset+7])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${parseMonto(rData[offset+8]) || ''}"></td><td><input type="text" class="edit-input s-fa3" value="${formatDateToAR(rData[offset+9])}" placeholder="DD/MM/AAAA"></td>`;
             
             rowHtml += `
                 <td>
                     <div style="display:flex; gap:4px; flex-direction:column;">
-                        <input type="number" step="0.01" class="edit-input s-me" value="${rData[offset+10] || ''}" placeholder="$ Efvo">
-                        <input type="number" step="0.01" class="edit-input s-mt" value="${rData[offset+11] || ''}" placeholder="$ Trans">
+                        <input type="number" step="0.01" class="edit-input s-me" value="${parseMonto(rData[offset+10]) || ''}" placeholder="$ Efvo">
+                        <input type="number" step="0.01" class="edit-input s-mt" value="${parseMonto(rData[offset+11]) || ''}" placeholder="$ Trans">
                     </div>
                 </td>
-                <td><input type="number" step="0.01" class="edit-input s-ph" value="${rData[offset+3] || ''}"></td>
+                <td><input type="number" step="0.01" class="edit-input s-ph" value="${parseMonto(rData[offset+3]) || ''}"></td>
                 <td><input type="text" class="edit-input s-hor" value="${rData[offset+2] || ''}" style="text-align:center;"></td>
                 <td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="archiveWorker(${worker.rowIndex})">Archivar</button></td>`;
                 
             tr.setAttribute("data-row-index", worker.rowIndex || "NEW"); 
             tr.innerHTML = rowHtml;
         } else {
-            let methodStr = "-"; const valE = Number(rData[offset+10]); const valT = Number(rData[offset+11]); 
+            let methodStr = "-"; const valE = parseMonto(rData[offset+10]); const valT = parseMonto(rData[offset+11]); 
             if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
             
             let rowHtml = `
                 <td class="text-left" style="font-weight:600;">${rData[offset] || '-'}</td>
-                <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(rData[offset+13])}</td>
+                <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(parseMonto(rData[offset+13]))}</td>
                 <td class="text-left">${formatDateToAR(rData[offset+12]) || '-'}</td>
                 <td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td>`;
                 
-            if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+4])}</td><td class="text-left">${formatDateToAR(rData[offset+5]) || '-'}</td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+6])}</td><td class="text-left">${formatDateToAR(rData[offset+7]) || '-'}</td>`;
-            if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+8])}</td><td class="text-left">${formatDateToAR(rData[offset+9]) || '-'}</td>`;
+            if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+4]))}</td><td class="text-left">${formatDateToAR(rData[offset+5]) || '-'}</td>`;
+            if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+6]))}</td><td class="text-left">${formatDateToAR(rData[offset+7]) || '-'}</td>`;
+            if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+8]))}</td><td class="text-left">${formatDateToAR(rData[offset+9]) || '-'}</td>`;
             
             rowHtml += `
                 <td class="text-left" style="font-size: 8.5pt;">${methodStr}</td>
-                <td class="text-right">${formatArgentineCurrency(rData[offset+3])}</td>
+                <td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+3]))}</td>
                 <td class="text-center">${rData[offset+2] || '-'}</td>`; 
                 
             tr.innerHTML = rowHtml;
