@@ -165,11 +165,15 @@
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                 <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
                                 <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
-                                <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9.5pt;">+ Nueva Operación</button>
+                                
+                                <button id="btn-historial-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nueva Operación</button>
+                                <button id="btn-historial-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
+                                <button id="btn-historial-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
+                                <button id="btn-historial-cancel" class="btn btn-secondary hidden">Cancelar</button>
                             </div>
                         </div>
                         
-                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <div class="table-responsive" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
                                     <tr id="historial-thead-tr">
@@ -246,7 +250,7 @@
             </header>
 
             <div style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding-top: 10px;">
-                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
+                <div class="table-responsive" style="flex-grow: 1; overflow: auto;">
                     <table class="data-table" id="proveedores-table">
                         <thead>
                             <tr>
@@ -302,7 +306,7 @@
                                 <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
                             </div>
                         </div>
-                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <div class="table-responsive" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
                             <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
                         </div>
                     </div>
