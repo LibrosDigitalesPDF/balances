@@ -1,357 +1,405 @@
-// ==========================================
-// CONFIGURACIÓN Y ESTADO GLOBAL
-// ==========================================
-const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
-const MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión Financiera</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="main-loader" class="loader-overlay">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p class="loader-text" id="loader-msg">Cargando base de datos...</p>
+        </div>
+    </div>
 
-// Mensajes rotativos para el cargador dinámico (Evita sensación de congelamiento)
-const LOADER_PHASES = [
-    "Conectando con el servidor central...",
-    "Descargando flujos de caja y balances...",
-    "Sincronizando cuentas de gastos...",
-    "Cargando módulos de proveedores...",
-    "Procesando registros de RRHH y sueldos...",
-    "Inicializando entorno administrativo seguro..."
-];
+    <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
 
-let appState = {
-    balances: null, proveedores: [], sueldos: {}, 
-    selectedMonth: "", selectedYear: "",
-    historyMonth: "ALL", historyYear: "ALL",
-    sueldosMonth: "", sueldosYear: "", sueldosEditMode: false,
-    currentHistorySheet: null, currentHistoryType: null,
-    currentUpload: null, activeProvRowIndex: null
-};
-
-let loaderInterval = null;
-
-// ==========================================
-// INICIALIZACIÓN
-// ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    initTheme();
-    initNavModules();
-    initSelectors();
-    initTabs();
-    setupEventListeners();
-    setupWebModalHandlers();
-    fetchFinancialData(); 
-});
-
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    const moonIcon = document.getElementById('moon-icon');
-    const sunIcon = document.getElementById('sun-icon');
-    if (savedTheme === 'dark') { document.body.classList.add('dark-mode'); moonIcon.classList.add('hidden'); sunIcon.classList.remove('hidden'); }
-    document.getElementById('theme-toggle').addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        if (isDark) { moonIcon.classList.add('hidden'); sunIcon.classList.remove('hidden'); } else { moonIcon.classList.remove('hidden'); sunIcon.classList.add('hidden'); }
-    });
-}
-
-function initNavModules() {
-    const navBtns = document.querySelectorAll(".top-nav-btn");
-    const modules = document.querySelectorAll(".app-module");
-    navBtns.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            navBtns.forEach(b => b.classList.remove("active")); e.target.classList.add("active");
-            const targetModule = e.target.getAttribute("data-module");
-            modules.forEach(m => { if (m.id === targetModule) { m.classList.remove("hidden"); m.classList.add("active"); } else { m.classList.add("hidden"); m.classList.remove("active"); } });
-            if (targetModule === "module-sueldos") renderSueldos();
-        });
-    });
-}
-
-function initSelectors() {
-    const today = new Date(); const currentMonth = String(today.getMonth() + 1).padStart(2, '0'); const currentYear = String(today.getFullYear());
-    document.getElementById("select-month").value = currentMonth; document.getElementById("select-year").value = currentYear;
-    appState.selectedMonth = currentMonth; appState.selectedYear = currentYear;
-    document.getElementById("sueldos-month").value = currentMonth; document.getElementById("sueldos-year").value = currentYear;
-    appState.sueldosMonth = currentMonth; appState.sueldosYear = currentYear;
-}
-
-function initTabs() {
-    const menuButtons = document.querySelectorAll(".menu-btn"); const tabViews = document.querySelectorAll(".tab-view");
-    const tabTitle = document.getElementById("tab-title"); const tabSubtitle = document.getElementById("tab-subtitle");
-    menuButtons.forEach(button => {
-        button.addEventListener("click", () => {
-            const targetTab = button.getAttribute("data-tab"); if (!button.closest('#module-balances')) return;
-            menuButtons.forEach(btn => { if(btn.closest('#module-balances')) btn.classList.remove("active"); });
-            document.querySelectorAll(".history-btn").forEach(btn => btn.classList.remove("active")); button.classList.add("active");
-            tabViews.forEach(view => { if(view.closest('#module-balances')) view.classList.toggle("active", view.id === `view-${targetTab}`); });
-            if (targetTab === "balance") { tabTitle.textContent = "Balance"; tabSubtitle.textContent = "Resumen consolidado de ingresos y gastos"; } 
-            else if (targetTab === "resumen-anual") { tabTitle.textContent = "Resumen Anual"; tabSubtitle.textContent = "Acumulado de flujos anuales consolidados"; renderAnnualSummary(); }
-        });
-    });
-}
-
-function populateSidebarHistory() {
-    const gastosContainer = document.getElementById("sidebar-gastos-list"); const ingresosContainer = document.getElementById("sidebar-ingresos-list");
-    gastosContainer.innerHTML = ""; ingresosContainer.innerHTML = "";
-    if (!appState.balances) return;
-    Object.keys(appState.balances.gastos).sort().forEach(sheetName => {
-        const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheetName; btn.title = sheetName;
-        btn.addEventListener("click", () => openHistoryView(sheetName, "gastos", btn)); gastosContainer.appendChild(btn);
-    });
-    const btnIngreso = document.createElement("button"); btnIngreso.className = "history-btn"; btnIngreso.textContent = "Ingresos";
-    btnIngreso.addEventListener("click", () => openHistoryView("Ingresos", "ingresos", btnIngreso)); ingresosContainer.appendChild(btnIngreso);
-}
-
-function setupEventListeners() {
-    document.getElementById("select-month").addEventListener("change", (e) => { appState.selectedMonth = e.target.value; renderBalance(); });
-    document.getElementById("select-year").addEventListener("change", (e) => { appState.selectedYear = e.target.value; renderBalance(); if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); });
-    document.getElementById("historial-month").addEventListener("change", (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); });
-    document.getElementById("historial-year").addEventListener("change", (e) => { appState.historyYear = e.target.value; renderHistoryTable(); });
-
-    document.getElementById("btn-add-tab-sheet").addEventListener("click", () => {
-        const newTab = prompt("Ingrese el nombre de la nueva cuenta:"); if (!newTab || newTab.trim() === "") return;
-        if (newTab.trim().toLowerCase() === "ingresos") { alert("Nombre reservado."); return; }
-        sendGlobalPostRequest("BAL_ADD_TAB", { sheetName: newTab.trim() });
-    });
-    document.getElementById("btn-del-tab-sheet").addEventListener("click", () => {
-        if (!appState.currentHistorySheet || appState.currentHistoryType === "ingresos") { alert("Seleccione una cuenta de Gastos válida."); return; }
-        if (confirm(`¿Eliminar la cuenta '${appState.currentHistorySheet}' permanentemente?`)) {
-            sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet }); appState.currentHistorySheet = null; document.querySelector('.menu-btn[data-tab="balance"]').click();
-        }
-    });
-
-    document.getElementById("sueldos-month").addEventListener("change", (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); });
-    document.getElementById("sueldos-year").addEventListener("change", (e) => { appState.sueldosYear = e.target.value; renderSueldos(); });
-    document.getElementById("btn-sueldos-edit-mode").addEventListener("click", () => toggleSueldosEditMode(true));
-    document.getElementById("btn-sueldos-cancel").addEventListener("click", () => toggleSueldosEditMode(false));
-    document.getElementById("btn-sueldos-save").addEventListener("click", () => saveSueldos());
-    document.getElementById("btn-sueldos-add").addEventListener("click", () => addSueldoEmptyRow());
-    document.getElementById("btn-refresh").addEventListener("click", () => fetchFinancialData());
-    document.getElementById("btn-add-proveedor").addEventListener("click", () => addProveedorEmptyRow());
-
-    document.getElementById("global-file-input").addEventListener("change", function(e) {
-        const file = e.target.files[0]; if (!file || !appState.currentUpload) return;
-        toggleLoader(true, "Subiendo archivo...");
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const base64String = evt.target.result.split(',')[1]; const typeKey = appState.currentUpload.categoryType; const targetMap = appState.balances[typeKey][appState.currentUpload.sheetName]; let folderId = "";
-            for (let period in targetMap) { let mov = targetMap[period].find(m => m.rowIndex === appState.currentUpload.rowIndex); if (mov) { folderId = appState.currentUpload.type === "compra" ? mov.idCarpetaCompra : mov.idCarpetaVenta; break; } }
-            const payload = { action: "UPLOAD_FILE", data: { sheetName: appState.currentUpload.sheetName, rowIndex: appState.currentUpload.rowIndex, type: appState.currentUpload.type, folderId: folderId || "", fileName: file.name, mimeType: file.type, fileBase64: base64String } };
-            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(res => res.json()).then(data => { if(data.status === "success") fetchFinancialData(); else { alert("Error: " + data.message); toggleLoader(false); } }).catch(() => toggleLoader(false));
-            document.getElementById("global-file-input").value = "";
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
-function setupWebModalHandlers() {
-    document.getElementById('btn-modal-close').onclick = () => document.getElementById('web-modal').classList.add('hidden');
-    document.getElementById('btn-modal-edit').onclick = function() { document.getElementById('web-view-mode').classList.add('hidden'); document.getElementById('web-edit-mode').classList.remove('hidden'); this.classList.add('hidden'); document.getElementById('btn-modal-save').classList.remove('hidden'); document.getElementById('btn-modal-cancel').classList.remove('hidden'); };
-    document.getElementById('btn-modal-cancel').onclick = () => window.openWebModal(appState.activeProvRowIndex);
-    document.getElementById('btn-modal-save').onclick = function() { const newVal = document.getElementById('modal-web-input').value; const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex); prov.web = newVal; sendGlobalPostRequest("PROV_EDIT", prov); document.getElementById('web-modal').classList.add('hidden'); };
-}
-
-function setupAccordions(container) {
-    const headers = container.querySelectorAll(".accordion-header");
-    headers.forEach(header => {
-        header.addEventListener("click", function() {
-            const item = this.parentElement; const body = this.nextElementSibling; item.classList.toggle("open");
-            if (item.classList.contains("open")) body.style.maxHeight = body.scrollHeight + "px"; else body.style.maxHeight = null;
-        });
-    });
-}
-
-// ==========================================
-// CARGADOR ANTIFREEZE INTERACTIVO
-// ==========================================
-function toggleLoader(show, msg = "") {
-    const loader = document.getElementById("main-loader");
-    const msgEl = document.getElementById("loader-msg");
-    
-    clearInterval(loaderInterval);
-    if (!show) { loader.classList.add("hidden"); return; }
-    
-    loader.classList.remove("hidden");
-    if (msg) { msgEl.textContent = msg; return; }
-    
-    // Motor de rotación de mensajes para evitar sensación de congelamiento
-    let phaseIdx = 0;
-    msgEl.textContent = LOADER_PHASES[phaseIdx];
-    loaderInterval = setInterval(() => {
-        phaseIdx = (phaseIdx + 1) % LOADER_PHASES.length;
-        msgEl.textContent = LOADER_PHASES[phaseIdx];
-    }, 1100);
-}
-
-function formatArgentineCurrency(value) { if(value === "" || value === "-" || isNaN(value)) return value || "-"; return `$ ${Math.abs(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
-function formatFinalBalance(value) { if(isNaN(value)) return "-"; const num = Math.abs(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return value < 0 ? `-$ ${num}` : `$ ${num}`; }
-
-function fetchFinancialData() {
-    toggleLoader(true);
-    fetch(API_URL).then(res => { if (!res.ok) throw new Error(); return res.json(); }).then(json => {
-        if (json.status === "success") {
-            appState.balances = json.data.balances; appState.proveedores = json.data.proveedores || []; appState.sueldos = json.data.sueldos || {};
-            populateSidebarHistory(); renderBalance(); renderProveedores();
-            if (document.getElementById("module-sueldos").classList.contains("active")) renderSueldos();
-            if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
-            if (appState.currentHistorySheet) renderHistoryTable(); 
-        }
-    }).catch(() => { alert("Error de sincronización."); }).finally(() => toggleLoader(false));
-}
-
-// 100% DINÁMICO: Renderiza el dashboard cruzando las llaves del objeto sin listas fijas
-function renderBalance() {
-    if (!appState.balances) return;
-    const periodKey = `${appState.selectedYear}-${appState.selectedMonth}`;
-    let grandTotalGastos = 0; let grandTotalIngresos = 0; let movimientosCount = 0;
-    const gastosList = document.getElementById("gastos-list"); gastosList.innerHTML = "";
-
-    Object.keys(appState.balances.gastos).sort().forEach(sheetName => {
-        const periodData = appState.balances.gastos[sheetName]?.[periodKey];
-        if (!periodData || periodData.length === 0) return; 
-        let categoryTotal = 0; let rowsHtml = "";
-        periodData.forEach(mov => {
-            const absMonto = Math.abs(mov.monto); categoryTotal += absMonto; movimientosCount++;
-            rowsHtml += `<tr><td class="text-left">${mov.fecha}</td><td class="text-left">${mov.detalle || "-"}</td><td class="text-left">${mov.operacion || "-"}</td><td class="text-right" style="font-weight:600; color: var(--text-primary);">${formatArgentineCurrency(absMonto)}</td></tr>`;
-        });
-        grandTotalGastos += categoryTotal;
-        const accItem = document.createElement("div"); accItem.className = "accordion-item";
-        
-        // Flecha reposicionada estrictamente a la IZQUIERDA en la estructura HTML antes del nombre de cuenta
-        accItem.innerHTML = `
-            <div class="accordion-header">
-                <div class="accordion-title-group">
-                    <svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg>
-                    <span class="item-name">${sheetName}</span>
+    <div id="web-modal" class="modal-overlay hidden">
+        <div class="modal-content card">
+            <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
+            <p id="modal-prov-name" style="margin-bottom: 20px; font-weight: 600; color: var(--text-secondary);"></p>
+            
+            <div class="modal-body">
+                <div id="web-view-mode" style="text-align: center; padding: 20px 0;">
+                    <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex;">Visitar Sitio Web</a>
+                    <p id="modal-no-web" class="text-danger hidden">Este proveedor no tiene una web registrada.</p>
                 </div>
-                <span class="item-val">${formatArgentineCurrency(categoryTotal)}</span>
+                
+                <div id="web-edit-mode" class="hidden">
+                    <label style="font-size: 9.5pt; font-weight: 600; color: var(--text-secondary);">URL de la página web:</label>
+                    <input type="text" id="modal-web-input" class="edit-input" style="margin-top: 8px; margin-bottom: 20px;" placeholder="Ej: https://www.proveedor.com">
+                </div>
             </div>
-            <div class="accordion-body">
-                <div class="accordion-content" style="padding-top:0; padding-bottom:0; border:none;">
-                    <div class="table-responsive">
-                        <table class="detail-table" style="margin:0; border-radius:0;">
-                            <thead><tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr></thead>
-                            <tbody>${rowsHtml}</tbody>
-                            <tfoot><tr class="table-total-row"><td colspan="3" class="text-right">TOTAL PESTAÑA</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(categoryTotal)}</td></tr></tfoot>
-                        </table>
-                    </div>
+            
+            <div class="modal-footer action-buttons" style="justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button id="btn-modal-edit" class="action-btn btn-edit">Editar URL</button>
+                <button id="btn-modal-save" class="action-btn btn-save hidden">Guardar</button>
+                <button id="btn-modal-cancel" class="action-btn btn-cancel hidden">Cancelar</button>
+                <button id="btn-modal-close" class="action-btn btn-secondary" style="color: var(--text-primary); border: 1px solid var(--border-color); background: transparent;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="top-navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">$$</div>
+            <h2>Sistema Admin</h2>
+        </div>
+        
+        <div class="nav-modules">
+            <button class="top-nav-btn active" data-module="module-balances">Balances</button>
+            <button class="top-nav-btn" data-module="module-sueldos">Sueldos</button>
+            <button class="top-nav-btn" data-module="module-proveedores">Proveedores</button>
+        </div>
+
+        <div class="nav-actions">
+            <button id="theme-toggle" class="btn btn-icon" title="Alternar Modo Noche">
+                <svg id="moon-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z" /></svg>
+                <svg id="sun-icon" viewBox="0 0 24 24" width="20" height="20" class="hidden"><path fill="currentColor" d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.82,19 13.63,18.83 14.37,18.56L12,22Z" /></svg>
+            </button>
+            <button id="btn-refresh" class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 8px; vertical-align: middle;"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                Sincronizar
+            </button>
+        </div>
+    </nav>
+
+    <div id="module-balances" class="app-module active">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-tab="balance"><span>Balance Mensual</span></button>
+                <button class="menu-btn" data-tab="resumen-anual"><span>Resumen Anual</span></button>
+            </nav>
+            <div class="sidebar-history">
+                <h3 class="sidebar-heading">Historial y Edición</h3>
+                <div class="sidebar-group">
+                    <h4 class="sidebar-subheading text-danger">Gastos</h4>
+                    <div id="sidebar-gastos-list" class="sidebar-dynamic-list"></div>
                 </div>
-            </div>`;
-        gastosList.appendChild(accItem);
-    });
-    document.getElementById("total-gastos-value").textContent = formatArgentineCurrency(grandTotalGastos); setupAccordions(gastosList);
+                <div class="sidebar-group">
+                    <h4 class="sidebar-subheading text-success">Ingresos</h4>
+                    <div id="sidebar-ingresos-list" class="sidebar-dynamic-list"></div>
+                </div>
 
-    const ingresosList = document.getElementById("ingresos-list"); ingresosList.innerHTML = "";
-    const ingresosData = appState.balances.ingresos["Ingresos"]?.[periodKey];
-    if (ingresosData && ingresosData.length > 0) {
-        let rowsHtml = ""; let categoryTotal = 0;
-        ingresosData.forEach(mov => { grandTotalIngresos += mov.monto; categoryTotal += mov.monto; movimientosCount++; rowsHtml += `<tr><td class="text-left">${mov.fecha}</td><td class="text-left">${mov.detalle || "-"}</td><td class="text-left">${mov.operacion || "-"}</td><td class="text-right" style="font-weight:600; color: var(--text-primary);">${formatArgentineCurrency(mov.monto)}</td></tr>`; });
-        const accIngreso = document.createElement("div"); accIngreso.className = "accordion-item";
-        accIngreso.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">Ingresos</span></div><span class="item-val">${formatArgentineCurrency(grandTotalIngresos)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead><tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr></thead><tbody>${rowsHtml}</tbody><tfoot><tr class="table-total-row"><td colspan="3" class="text-right">TOTAL INGRESOS</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(categoryTotal)}</td></tr></tfoot></table></div></div></div>`;
-        ingresosList.appendChild(accIngreso); setupAccordions(ingresosList);
-    }
-    document.getElementById("total-ingresos-value").textContent = formatArgentineCurrency(grandTotalIngresos);
-    if (movimientosCount === 0) { document.getElementById("empty-state").classList.remove("hidden"); document.getElementById("balance-content-wrapper").classList.add("hidden"); } else { document.getElementById("empty-state").classList.add("hidden"); document.getElementById("balance-content-wrapper").classList.remove("hidden"); }
-    const netBalance = grandTotalIngresos - grandTotalGastos;
-    document.getElementById("final-balance-value").textContent = formatFinalBalance(netBalance); document.getElementById("final-balance-value").className = `final-amount text-right ${netBalance >= 0 ? 'text-success' : 'text-danger'}`; document.getElementById("balance-result-card").className = `card balance-result-card ${netBalance >= 0 ? 'positive' : 'negative'}`;
-}
+                <div class="sidebar-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9pt; border-style: dashed; justify-content: center;">
+                        + Agregar Cuenta
+                    </button>
+                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9pt; border-style: dashed; color: var(--danger-color); border-color: var(--danger-color); justify-content: center;">
+                        - Eliminar Cuenta
+                    </button>
+                </div>
 
-function renderAnnualSummary() {
-    if (!appState.balances) return; const selectedYear = appState.selectedYear; let annualGastosTotal = 0; let annualIngresosTotal = 0;
-    Object.keys(appState.balances.gastos).forEach(sheetName => { const sheetMonths = appState.balances.gastos[sheetName] || {}; for (const periodKey in sheetMonths) { if (periodKey.startsWith(`${selectedYear}-`)) { sheetMonths[periodKey].forEach(mov => { annualGastosTotal += Math.abs(mov.monto); }); } } });
-    const ingresosMonths = appState.balances.ingresos["Ingresos"] || {}; for (const periodKey in ingresosMonths) { if (periodKey.startsWith(`${selectedYear}-`)) { ingresosMonths[periodKey].forEach(mov => { annualIngresosTotal += mov.monto; }); } }
-    const annualNet = annualIngresosTotal - annualGastosTotal;
-    document.getElementById("annual-ingresos").textContent = formatArgentineCurrency(annualIngresosTotal); document.getElementById("annual-gastos").textContent = formatArgentineCurrency(annualGastosTotal);
-    document.getElementById("annual-balance").textContent = formatFinalBalance(annualNet); document.getElementById("annual-balance").className = `text-right font-weight-bold ${annualNet >= 0 ? 'text-success' : 'text-danger'}`;
-}
+            </div>
+            <div class="sidebar-footer"><p>Módulo Balances v7.0</p></div>
+        </aside>
 
-function openHistoryView(sheetName, type, clickedBtn) {
-    if (!appState.balances) return;
-    document.querySelectorAll(".menu-btn").forEach(btn => btn.classList.remove("active")); document.querySelectorAll(".history-btn").forEach(btn => btn.classList.remove("active")); clickedBtn.classList.add("active");
-    document.querySelectorAll(".tab-view").forEach(view => view.classList.remove("active")); document.getElementById("view-historial").classList.add("active");
-    document.getElementById("tab-title").textContent = "Historial y Edición"; document.getElementById("tab-subtitle").textContent = sheetName; document.getElementById("historial-title").textContent = `Registros: ${sheetName}`;
-    const btnAdd = document.getElementById("btn-add-balance"); btnAdd.classList.remove("hidden"); btnAdd.onclick = () => addBalanceEmptyRow(sheetName, type);
-    appState.currentHistorySheet = sheetName; appState.currentHistoryType = type;
-    document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL"; appState.historyMonth = "ALL"; appState.historyYear = "ALL";
-    renderHistoryTable();
-}
+        <main class="main-content">
+            <header class="main-header" style="padding-bottom: 15px;">
+                <div class="header-title">
+                    <h1 id="tab-title">Balance</h1>
+                    <p class="header-subtitle" id="tab-subtitle">Resumen consolidado de ingresos y gastos</p>
+                </div>
+            </header>
 
-function renderHistoryTable() {
-    const sheetName = appState.currentHistorySheet; const type = appState.currentHistoryType; if (!sheetName || !appState.balances) return;
-    const targetMap = appState.balances[type][sheetName]; const tbody = document.getElementById("historial-tbody"); const table = document.getElementById("historial-table"); const emptyMsg = document.getElementById("historial-empty"); const totalRow = document.getElementById("historial-total-row"); const totalVal = document.getElementById("historial-total-value");
-    tbody.innerHTML = ""; let grandTotalHistorico = 0; let filteredMovs = [];
-    for (const period in targetMap) { const [year, month] = period.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== year) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; if (targetMap[period]) filteredMovs = filteredMovs.concat(targetMap[period]); }
-    if (filteredMovs.length === 0) { table.classList.add("hidden"); totalRow.classList.add("hidden"); emptyMsg.classList.remove("hidden"); } 
-    else { filteredMovs.forEach(mov => { grandTotalHistorico += Math.abs(mov.monto); tbody.appendChild(createBalanceRowHTML(mov, false, sheetName, type)); }); table.classList.remove("hidden"); totalRow.classList.remove("hidden"); emptyMsg.classList.add("hidden"); totalVal.textContent = formatArgentineCurrency(grandTotalHistorico); totalVal.className = `total-amount text-right`; }
-}
+            <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                
+                <section id="view-balance" class="tab-view active">
+                    <div class="card selector-card">
+                        <div class="selector-group">
+                            <div class="control-field">
+                                <label for="select-month">Mes</label>
+                                <select id="select-month" class="form-control">
+                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="control-field">
+                                <label for="select-year">Año</label>
+                                <select id="select-year" class="form-control">
+                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
+                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
+                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
+                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
+                                    <option value="2039">2039</option><option value="2040">2040</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-function createBalanceRowHTML(mov, isEditing, sheetName, type) {
-    const tr = document.createElement("tr");
-    if (isEditing) { tr.innerHTML = `<td><input type="text" class="edit-input i-fec" value="${mov.fecha || ''}" placeholder="DD/MM/AAAA"></td><td><input type="text" class="edit-input i-det" value="${mov.detalle || ''}"></td><td><input type="number" step="0.01" class="edit-input i-mon" value="${mov.monto || ''}"></td><td><input type="text" class="edit-input i-ope" value="${mov.operacion || ''}"></td><td><input type="text" class="edit-input i-i21" value="${mov.iva21 || ''}"></td><td><input type="text" class="edit-input i-i105" value="${mov.iva105 || ''}"></td><td><input type="text" class="edit-input i-icon" value="${mov.ivaCont || ''}"></td><td><input type="text" class="edit-input i-carpc" value="${mov.idCarpetaCompra || ''}"></td><td><input type="text" class="edit-input i-carpv" value="${mov.idCarpetaVenta || ''}"></td><td class="text-center">-</td><td class="text-center">-</td><td class="action-buttons sticky-col"><button class="action-btn btn-save" onclick="saveBalance(this, ${mov.rowIndex || 'null'}, '${sheetName}', '${type}')">Guardar</button><button class="action-btn btn-cancel" onclick="renderHistoryTable()">Cancelar</button></td>`; } 
-    else {
-        const montoFormat = formatArgentineCurrency(type === 'gastos' ? Math.abs(mov.monto) : mov.monto);
-        const compHTML_C = mov.idComprobanteCompra ? `<a href="https://drive.google.com/file/d/${mov.idComprobanteCompra}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none; display:inline-block;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${sheetName}', ${mov.rowIndex}, 'compra', '${type}')">Subir</button>`;
-        const compHTML_V = mov.idComprobanteVenta ? `<a href="https://drive.google.com/file/d/${mov.idComprobanteVenta}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none; display:inline-block;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${sheetName}', ${mov.rowIndex}, 'venta', '${type}')">Subir</button>`;
-        const linkCarpC = mov.idCarpetaCompra ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaCompra}" target="_blank" style="color:var(--primary-color);">Carpeta</a>` : '-'; const linkCarpV = mov.idCarpetaVenta ? `<a href="https://drive.google.com/drive/folders/${mov.idCarpetaVenta}" target="_blank" style="color:var(--primary-color);">Carpeta</a>` : '-';
-        tr.innerHTML = `<td>${mov.fecha || '-'}</td><td>${mov.detalle || '-'}</td><td class="text-right" style="font-weight:600; color: var(--text-primary);">${montoFormat}</td><td>${mov.operacion || '-'}</td><td>${mov.iva21 || '-'}</td><td>${mov.iva105 || '-'}</td><td>${mov.ivaCont || '-'}</td><td class="text-center">${linkCarpC}</td><td class="text-center">${linkCarpV}</td><td class="text-center">${compHTML_C}</td><td class="text-center">${compHTML_V}</td><td class="action-buttons sticky-col"><button class="action-btn btn-edit" onclick="editBalance(${mov.rowIndex}, '${sheetName}', '${type}')">Editar</button><button class="action-btn btn-delete" onclick="deleteBalance(${mov.rowIndex}, '${sheetName}')">Borrar</button></td>`;
-    } return tr;
-}
-function addBalanceEmptyRow(sheetName, type) { const tbody = document.getElementById("historial-tbody"); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); const emptyMov = { fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idCarpetaCompra: "", idCarpetaVenta: "" }; tbody.insertBefore(createBalanceRowHTML(emptyMov, true, sheetName, type), tbody.firstChild); }
-window.editBalance = function(rowIndex, sheetName, type) { let targetMov; const targetMap = appState.balances[type][sheetName]; for (let period in targetMap) { let mov = targetMap[period].find(m => m.rowIndex === rowIndex); if (mov) targetMov = mov; } if (!targetMov) return; const tbody = document.getElementById("historial-tbody"); const rows = Array.from(tbody.querySelectorAll("tr")); const rowIndexInTable = rows.findIndex(row => row.querySelector(`button[onclick*="${rowIndex}"]`)); if (rowIndexInTable > -1) { tbody.replaceChild(createBalanceRowHTML(targetMov, true, sheetName, type), rows[rowIndexInTable]); } };
-window.saveBalance = function(btnElement, rowIndex, sheetName, type) { const tr = btnElement.closest("tr"); let rawMonto = tr.querySelector(".i-mon").value; if (type === 'gastos' && rawMonto > 0) rawMonto = -rawMonto; let compCompra = "", compVenta = ""; if (rowIndex) { const targetMap = appState.balances[type][sheetName]; for (let period in targetMap) { let mov = targetMap[period].find(m => m.rowIndex === rowIndex); if (mov) { compCompra = mov.idComprobanteCompra; compVenta = mov.idComprobanteVenta; break; } } } const payload = { rowIndex: rowIndex, sheetName: sheetName, fecha: tr.querySelector(".i-fec").value, detalle: tr.querySelector(".i-det").value, monto: rawMonto, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idCarpetaCompra: tr.querySelector(".i-carpc").value, idComprobanteCompra: compCompra, idCarpetaVenta: tr.querySelector(".i-carpv").value, idComprobanteVenta: compVenta }; sendGlobalPostRequest(rowIndex ? "BAL_EDIT" : "BAL_ADD", payload); };
-window.deleteBalance = function(rowIndex, sheetName) { if (confirm("¿Eliminar permanente?")) { sendGlobalPostRequest("BAL_DELETE", { rowIndex: rowIndex, sheetName: sheetName }); } };
-window.triggerUpload = function(sheetName, rowIndex, uploadType, categoryType) { appState.currentUpload = { sheetName, rowIndex, type: uploadType, categoryType }; document.getElementById("global-file-input").click(); };
+                    <div id="error-container" class="alert alert-danger hidden">
+                        <span id="error-message">Error al conectar con la base de datos.</span>
+                    </div>
 
-function renderProveedores() { const tbody = document.getElementById("proveedores-tbody"); tbody.innerHTML = ""; appState.proveedores.forEach(prov => tbody.appendChild(createProvRowHTML(prov, false))); }
-function createProvRowHTML(prov, isEditing) { const tr = document.createElement("tr"); if (isEditing) { tr.innerHTML = `<td><input type="text" class="edit-input i-prov" value="${prov.proveedor || ''}"></td><td><input type="text" class="edit-input i-nom" value="${prov.nombre || ''}"></td><td><input type="text" class="edit-input i-dir" value="${prov.direccion || ''}"></td><td><input type="text" class="edit-input i-ban" value="${prov.banco || ''}"></td><td><input type="text" class="edit-input i-ali" value="${prov.alias || ''}"></td><td><input type="text" class="edit-input i-cbu" value="${prov.cbu || ''}"></td><td class="text-center">-</td><td class="action-buttons sticky-col"><button class="action-btn btn-save" onclick="saveProveedor(this, ${prov.rowIndex || 'null'})">Guardar</button><button class="action-btn btn-cancel" onclick="renderProveedores()">Cancelar</button></td>`; } else { tr.innerHTML = `<td>${prov.proveedor}</td><td>${prov.nombre}</td><td>${prov.direccion}</td><td>${prov.banco}</td><td>${prov.alias}</td><td>${prov.cbu}</td><td class="text-center"><button class="action-btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color); background:transparent; padding: 6px 10px;" onclick="openWebModal(${prov.rowIndex})">Ver Web</button></td><td class="action-buttons sticky-col"><button class="action-btn btn-edit" onclick="editProveedor(${prov.rowIndex})">Editar</button><button class="action-btn btn-delete" onclick="deleteProveedor(${prov.rowIndex})">Borrar</button></td>`; } return tr; }
-function addProveedorEmptyRow() { const tbody = document.getElementById("proveedores-tbody"); const emptyProv = { proveedor: "", nombre: "", direccion: "", banco: "", alias: "", cbu: "", web: "" }; tbody.insertBefore(createProvRowHTML(emptyProv, true), tbody.firstChild); }
-window.editProveedor = function(rowIndex) { const prov = appState.proveedores.find(p => p.rowIndex === rowIndex); if (!prov) return; const tbody = document.getElementById("proveedores-tbody"); const rows = Array.from(tbody.querySelectorAll("tr")); const rowIndexInTable = rows.findIndex(row => row.querySelector(`button[onclick*="${rowIndex}"]`)); if (rowIndexInTable > -1) tbody.replaceChild(createProvRowHTML(prov, true), rows[rowIndexInTable]); };
-window.saveProveedor = function(btnElement, rowIndex) { const tr = btnElement.closest("tr"); let currentWeb = ""; if (rowIndex) { const p = appState.proveedores.find(p => p.rowIndex === rowIndex); if (p) currentWeb = p.web; } const payload = { rowIndex: rowIndex, proveedor: tr.querySelector(".i-prov").value, nombre: tr.querySelector(".i-nom").value, direccion: tr.querySelector(".i-dir").value, banco: tr.querySelector(".i-ban").value, alias: tr.querySelector(".i-ali").value, cbu: tr.querySelector(".i-cbu").value, web: currentWeb }; sendGlobalPostRequest(rowIndex ? "PROV_EDIT" : "PROV_ADD", payload); };
-window.deleteProveedor = function(rowIndex) { if (confirm("¿Eliminar proveedor?")) sendGlobalPostRequest("PROV_DELETE", { rowIndex: rowIndex }); };
-window.openWebModal = function(rowIndex) { appState.activeProvRowIndex = rowIndex; const prov = appState.proveedores.find(p => p.rowIndex === rowIndex); document.getElementById('modal-prov-name').textContent = prov.nombre || prov.proveedor || "Nuevo Proveedor"; const viewMode = document.getElementById('web-view-mode'); const editMode = document.getElementById('web-edit-mode'); const link = document.getElementById('modal-web-link'); const noWeb = document.getElementById('modal-no-web'); const input = document.getElementById('modal-web-input'); viewMode.classList.remove('hidden'); editMode.classList.add('hidden'); document.getElementById('btn-modal-edit').classList.remove('hidden'); document.getElementById('btn-modal-save').classList.add('hidden'); document.getElementById('btn-modal-cancel').classList.add('hidden'); if(prov.web && prov.web.trim() !== "") { link.href = prov.web.startsWith('http') ? prov.web : 'https://' + prov.web; link.classList.remove('hidden'); noWeb.classList.add('hidden'); input.value = prov.web; } else { link.classList.add('hidden'); noWeb.classList.remove('hidden'); input.value = ""; } document.getElementById('web-modal').classList.remove('hidden'); };
+                    <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">
+                        No se registraron movimientos en este período.
+                    </div>
 
-// ==========================================
-// MÓDULO: SUELDOS (RRHH)
-// ==========================================
-function renderSueldos() {
-    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14;
-    const thead = document.getElementById("sueldos-thead"); const tbody = document.getElementById("sueldos-tbody"); const emptyState = document.getElementById("sueldos-empty-state"); const tableCard = document.getElementById("sueldos-card-content");
-    thead.innerHTML = ""; tbody.innerHTML = "";
-    let yearData = appState.sueldos[year] || []; let activeWorkers = [];
-    if (appState.sueldosEditMode) { activeWorkers = yearData; } else { activeWorkers = yearData.filter(worker => { const dataMes = worker.rowData.slice(offset, offset + 14); return dataMes.some(val => val !== "" && val !== "-"); }); }
-    if (activeWorkers.length === 0 && !appState.sueldosEditMode) { emptyState.classList.remove("hidden"); tableCard.classList.add("hidden"); return; } else { emptyState.classList.add("hidden"); tableCard.classList.remove("hidden"); }
-    activeWorkers.sort((a, b) => { const nameA = (a.rowData[offset] || "").toString().toLowerCase(); const nameB = (b.rowData[offset] || "").toString().toLowerCase(); return nameA.localeCompare(nameB); });
-    let maxAdelantos = 0; activeWorkers.forEach(w => { if (w.rowData[offset + 4] !== "" && w.rowData[offset + 4] !== "-") maxAdelantos = Math.max(maxAdelantos, 1); if (w.rowData[offset + 6] !== "" && w.rowData[offset + 6] !== "-") maxAdelantos = Math.max(maxAdelantos, 2); if (w.rowData[offset + 8] !== "" && w.rowData[offset + 8] !== "-") maxAdelantos = Math.max(maxAdelantos, 3); });
-    let thHtml = `<tr><th class="text-left">Nombre</th><th class="text-left">Mes</th><th class="text-center">Horas</th><th class="text-right">Precio/Hora</th>`;
-    if (maxAdelantos >= 1) thHtml += `<th class="text-right">Adelanto 1</th><th class="text-left">F. Ad1</th>`;
-    if (maxAdelantos >= 2) thHtml += `<th class="text-right">Adelanto 2</th><th class="text-left">F. Ad2</th>`;
-    if (maxAdelantos === 3) thHtml += `<th class="text-right">Adelanto 3</th><th class="text-left">F. Ad3</th>`;
-    thHtml += `<th class="text-left">Método Pago</th><th class="text-left">F. Pago</th><th class="text-right">Sueldo Final</th>`;
-    if (appState.sueldosEditMode) thHtml += `<th class="text-center sticky-col">Acciones</th>`;
-    thHtml += `</tr>`; thead.innerHTML = thHtml;
-    activeWorkers.forEach((worker) => {
-        const tr = document.createElement("tr"); const rData = worker.rowData;
-        if (appState.sueldosEditMode) {
-            let rowHtml = `<td><input type="text" class="edit-input s-nom" value="${rData[offset] || ''}"></td><td><input type="text" class="edit-input s-mes" value="${MESES_NOMBRES[month]}"></td><td><input type="text" class="edit-input s-hor" value="${rData[offset+2] || ''}" style="text-align:center;"></td><td><input type="number" step="0.01" class="edit-input s-ph" value="${rData[offset+3] || ''}"></td>`;
-            if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${rData[offset+4] || ''}"></td><td><input type="text" class="edit-input s-fa1" value="${rData[offset+5] || ''}" placeholder="DD/MM"></td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${rData[offset+6] || ''}"></td><td><input type="text" class="edit-input s-fa2" value="${rData[offset+7] || ''}" placeholder="DD/MM"></td>`;
-            if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${rData[offset+8] || ''}"></td><td><input type="text" class="edit-input s-fa3" value="${rData[offset+9] || ''}" placeholder="DD/MM"></td>`;
-            rowHtml += `<td><div style="display:flex; gap:4px; flex-direction:column;"><input type="number" step="0.01" class="edit-input s-me" value="${rData[offset+10] || ''}" placeholder="$ Efvo"><input type="number" step="0.01" class="edit-input s-mt" value="${rData[offset+11] || ''}" placeholder="$ Trans"></div></td><td><input type="text" class="edit-input s-fp" value="${rData[offset+12] || ''}" placeholder="DD/MM"></td><td><input type="number" step="0.01" class="edit-input s-sue" value="${rData[offset+13] || ''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="archiveWorker(${worker.rowIndex})">Archivar</button></td>`;
-            tr.setAttribute("data-row-index", worker.rowIndex || "NEW"); tr.innerHTML = rowHtml;
-        } else {
-            let methodStr = "-"; const valE = Number(rData[offset+10]); const valT = Number(rData[offset+11]); if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
-            let rowHtml = `<td class="text-left" style="font-weight:600;">${rData[offset] || '-'}</td><td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td><td class="text-center">${rData[offset+2] || '-'}</td><td class="text-right">${formatArgentineCurrency(rData[offset+3])}</td>`;
-            if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+4])}</td><td class="text-left">${rData[offset+5] || '-'}</td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+6])}</td><td class="text-left">${rData[offset+7] || '-'}</td>`;
-            if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(rData[offset+8])}</td><td class="text-left">${rData[offset+9] || '-'}</td>`;
-            rowHtml += `<td class="text-left" style="font-size: 8.5pt;">${methodStr}</td><td class="text-left">${rData[offset+12] || '-'}</td><td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(rData[offset+13])}</td>`; tr.innerHTML = rowHtml;
-        } tbody.appendChild(tr);
-    });
-}
-function toggleSueldosEditMode(isEdit) { appState.sueldosEditMode = isEdit; const btnEdit = document.getElementById("btn-sueldos-edit-mode"); const btnSave = document.getElementById("btn-sueldos-save"); const btnCancel = document.getElementById("btn-sueldos-cancel"); if (isEdit) { btnEdit.classList.add("hidden"); btnSave.classList.remove("hidden"); btnCancel.classList.remove("hidden"); } else { btnEdit.classList.remove("hidden"); btnSave.classList.add("hidden"); btnCancel.classList.add("hidden"); } renderSueldos(); }
-function addSueldoEmptyRow() { if (!appState.sueldosEditMode) toggleSueldosEditMode(true); const year = appState.sueldosYear; if (!appState.sueldos[year]) appState.sueldos[year] = []; let newRow = Array(168).fill("-"); const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; for(let i=0; i<14; i++) newRow[offset + i] = ""; newRow[offset + 1] = MESES_NOMBRES[month]; appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow }); renderSueldos(); }
-function archiveWorker(rowIndex) { if(!confirm("¿Archivar?")) return; const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); if (!worker) return; for (let i = offset; i < 168; i++) worker.rowData[i] = "-"; sendSueldosPostRequest("SUELDO_SAVE_ROW", { year: year, rowIndex: rowIndex, rowData: worker.rowData }); }
-async function saveSueldos() {
-    const tbody = document.getElementById("sueldos-tbody"); const rows = tbody.querySelectorAll("tr"); const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; toggleLoader(true, "Guardando...");
-    try { for (let tr of rows) { let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex); let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill("-"); const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; finalRowData[offset] = getVal('.s-nom'); finalRowData[offset+1] = getVal('.s-mes'); finalRowData[offset+2] = getVal('.s-hor'); finalRowData[offset+3] = getVal('.s-ph'); finalRowData[offset+4] = getVal('.s-a1') || finalRowData[offset+4]; finalRowData[offset+5] = getVal('.s-fa1') || finalRowData[offset+5]; finalRowData[offset+6] = getVal('.s-a2') || finalRowData[offset+6]; finalRowData[offset+7] = getVal('.s-fa2') || finalRowData[offset+7]; finalRowData[offset+8] = getVal('.s-a3') || finalRowData[offset+8]; finalRowData[offset+9] = getVal('.s-fa3') || finalRowData[offset+9]; finalRowData[offset+10] = getVal('.s-me'); finalRowData[offset+11] = getVal('.s-mt'); finalRowData[offset+12] = getVal('.s-fp'); finalRowData[offset+13] = getVal('.s-sue'); const nombre = finalRowData[offset]; for (let m = 0; m < 12; m++) finalRowData[m * 14] = nombre; await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: finalRowData } }) }); } toggleSueldosEditMode(false); fetchFinancialData(); } catch { toggleLoader(false); }
-}
+                    <div id="balance-content-wrapper">
+                        <div class="card financial-section">
+                            <h3 class="section-title text-left">Gastos</h3>
+                            <div class="list-container accordion-container" id="gastos-list"></div>
+                            <div class="section-total-row">
+                                <span class="total-label text-left">TOTAL GASTOS DEL MES</span>
+                                <span class="total-amount text-right" id="total-gastos-value">$ 0,00</span>
+                            </div>
+                        </div>
 
-function sendGlobalPostRequest(action, dataObj) { toggleLoader(true, "Procesando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) }).then(res => res.json()).then(res => { if (res.status === "success") fetchFinancialData(); else { alert("Error"); toggleLoader(false); } }).catch(() => toggleLoader(false)); }
-function sendSueldosPostRequest(action, dataObj) { toggleLoader(true, "Procesando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) }).then(res => res.json()).then(res => { if (res.status === "success") fetchFinancialData(); else toggleLoader(false); }).catch(() => toggleLoader(false)); }
+                        <div class="card financial-section" id="ingresos-section">
+                            <h3 class="section-title text-left">Ingresos</h3>
+                            <div class="list-container accordion-container" id="ingresos-list"></div>
+                            <div class="section-total-row">
+                                <span class="total-label text-left">TOTAL INGRESOS DEL MES</span>
+                                <span class="total-amount text-right" id="total-ingresos-value">$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <div class="card balance-result-card" id="balance-result-card">
+                            <div class="balance-final-row">
+                                <span class="final-label text-left">BALANCE DEL MES</span>
+                                <span class="final-amount text-right" id="final-balance-value">$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-resumen-anual" class="tab-view">
+                    <div class="card">
+                        <h3 class="section-title text-left">Resumen Consolidado Anual</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                               <thead>
+                                   <tr>
+                                       <th class="text-left">Métrica de Rendimiento</th>
+                                       <th class="text-right">Monto Acumulado</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   <tr>
+                                       <td class="text-left">Ingresos Totales del Año</td>
+                                       <td class="text-right text-success" id="annual-ingresos">$ 0,00</td>
+                                   </tr>
+                                   <tr>
+                                       <td class="text-left">Gastos Totales del Año</td>
+                                       <td class="text-right text-danger" id="annual-gastos">$ 0,00</td>
+                                   </tr>
+                                   <tr class="table-total-row">
+                                       <td class="text-left">Balance Neto Acumulado</td>
+                                       <td class="text-right" id="annual-balance">$ 0,00</td>
+                                   </tr>
+                               </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-historial" class="tab-view" style="flex-grow: 1; flex-direction: column;">
+                    <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+                            <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
+                            
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9pt;">
+                                    <option value="ALL">Todo el Año</option>
+                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                                </select>
+                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9pt;">
+                                    <option value="ALL">Todos los Años</option>
+                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
+                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
+                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
+                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
+                                    <option value="2039">2039</option><option value="2040">2040</option>
+                                </select>
+                                <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9pt;">+ Nueva Operación</button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
+                            <table class="data-table hidden" id="historial-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Fecha</th>
+                                        <th class="text-left">Detalle</th>
+                                        <th class="text-right">Monto</th>
+                                        <th class="text-left">Operación</th>
+                                        <th class="text-left">IVA 21%</th>
+                                        <th class="text-left">IVA 10.5%</th>
+                                        <th class="text-left">IVA Cont.</th>
+                                        <th class="text-center">Comprobante C.</th>
+                                        <th class="text-center">Comprobante P.</th>
+                                        <th class="text-center sticky-col">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historial-tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 15px;">
+                            <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span>
+                            <span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
+                        </div>
+
+                        <div id="carpetas-config-section" class="card hidden" style="flex-shrink: 0; margin-bottom: 24px; border: 1px dashed var(--primary-color); background-color: rgba(59, 130, 246, 0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                                <h3 class="section-title text-left" style="margin: 0; font-size: 11.5pt;">Carpetas de Drive enlazadas</h3>
+                                <div class="action-buttons">
+                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button>
+                                    <button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button>
+                                    <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
+                                </div>
+                            </div>
+                            
+                            <div class="selector-group" style="gap: 15px;">
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Cuenta</label>
+                                    <div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID de la carpeta principal">-</div>
+                                    <input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Compra</label>
+                                    <div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de compras">-</div>
+                                    <input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label>
+                                    <div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de pagos/ventas">-</div>
+                                    <input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros para este período.</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="module-proveedores" class="app-module hidden">
+        <main class="main-content full-width" style="display: flex; flex-direction: column;">
+            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0;">
+                <div class="header-title">
+                    <h1>Directorio de Proveedores</h1>
+                    <p class="header-subtitle">Gestión interactiva de datos comerciales</p>
+                </div>
+                <button id="btn-add-proveedor" class="btn" style="background-color: var(--primary-color); color: white;">
+                    + Nuevo Proveedor
+                </button>
+            </header>
+
+            <div class="card" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding: 0;">
+                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 24px;">
+                    <table class="data-table" id="proveedores-table">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Proveedor</th>
+                                <th class="text-left">Nombre</th>
+                                <th class="text-left">Dirección</th>
+                                <th class="text-left">Banco</th>
+                                <th class="text-left">Alias</th>
+                                <th class="text-left">CBU</th>
+                                <th class="text-center">Web</th>
+                                <th class="text-center sticky-col">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proveedores-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="module-sueldos" class="app-module hidden">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-tab="registro-sueldos">
+                    <svg class="menu-svg" viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M23.44 9.17L18.42 14.19L15.6 11.37L17.02 9.96L18.42 11.36L22.03 7.75L23.44 9.17Z" />
+                    </svg>
+                    <span>Registro de Sueldos</span>
+                </button>
+            </nav>
+            <div class="sidebar-history">
+                <h3 class="sidebar-heading">Gestión de RRHH</h3>
+                <p style="font-size: 9pt; padding: 0 10px; color: var(--text-secondary);">
+                    Administración de honorarios, adelantos y control de asistencias.
+                </p>
+            </div>
+            <div class="sidebar-footer"><p>Módulo RRHH v1.0</p></div>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                <div class="header-title">
+                    <h1 id="sueldos-tab-title">Liquidación de Sueldos</h1>
+                    <p class="header-subtitle">Visualización y edición mensual de trabajadores</p>
+                </div>
+            </header>
+
+            <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div class="card selector-card" style="margin-bottom: 20px;">
+                        <div class="selector-group">
+                            <div class="control-field">
+                                <label for="sueldos-month">Mes a liquidar</label>
+                                <select id="sueldos-month" class="form-control">
+                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="control-field">
+                                <label for="sueldos-year">Año</label>
+                                <select id="sueldos-year" class="form-control">
+                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
+                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
+                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
+                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
+                                    <option value="2039">2039</option><option value="2040">2040</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">
+                        No existen registros de sueldos para este período.
+                    </div>
+
+                    <div class="card" id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                            <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="btn-sueldos-add" class="btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
+                                <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white;">Editar Tabla</button>
+                                <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white;">Guardar Cambios</button>
+                                <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 0 20px 20px 20px;">
+                            <table class="data-table" id="sueldos-table">
+                                <thead id="sueldos-thead"></thead>
+                                <tbody id="sueldos-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
