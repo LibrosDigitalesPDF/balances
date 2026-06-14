@@ -1,217 +1,298 @@
-/* =========================================
-   VARIABLES GLOBALES
-   ========================================= */
-:root {
-    --bg-main: #f8fafc;
-    --bg-sidebar: #0f172a;
-    --sidebar-text: #94a3b8;
-    --sidebar-text-active: #ffffff;
-    --sidebar-bg-active: #1e293b;
-    --card-bg: #ffffff;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --primary-color: #3b82f6;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --border-color: #e2e8f0;
-    --table-header-bg: #f8fafc;
-    --hover-bg: #f1f5f9;
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión Financiera</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="main-loader" class="loader-overlay">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p class="loader-text" id="loader-msg">Cargando base de datos...</p>
+        </div>
+    </div>
 
-body.dark-mode {
-    --bg-main: #000000;
-    --bg-sidebar: #0a0a0a;
-    --sidebar-text: #a3a3a3;
-    --sidebar-text-active: #ffffff;
-    --sidebar-bg-active: #262626;
-    --card-bg: #111111;
-    --text-primary: #ffffff;
-    --text-secondary: #a3a3a3;
-    --primary-color: #3b82f6;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --border-color: #333333;
-    --table-header-bg: #1a1a1a;
-    --hover-bg: #222222;
-}
+    <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+    <div id="web-modal" class="modal-overlay hidden">
+        <div class="modal-content card">
+            <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
+            <p id="modal-prov-name" style="margin-bottom: 20px; font-weight: 600; color: var(--text-secondary);"></p>
+            <div class="modal-body">
+                <div id="web-view-mode" style="text-align: center; padding: 20px 0;">
+                    <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex;">Visitar Sitio Web</a>
+                    <p id="modal-no-web" class="text-danger hidden">Este proveedor no tiene una web registrada.</p>
+                </div>
+                <div id="web-edit-mode" class="hidden">
+                    <label style="font-size: 9.5pt; font-weight: 600; color: var(--text-secondary);">URL de la página web:</label>
+                    <input type="text" id="modal-web-input" class="edit-input" style="margin-top: 8px; margin-bottom: 20px;" placeholder="Ej: https://www.proveedor.com">
+                </div>
+            </div>
+            <div class="modal-footer action-buttons" style="justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button id="btn-modal-edit" class="action-btn btn-edit">Editar URL</button>
+                <button id="btn-modal-save" class="action-btn btn-save hidden">Guardar</button>
+                <button id="btn-modal-cancel" class="action-btn btn-cancel hidden">Cancelar</button>
+                <button id="btn-modal-close" class="action-btn btn-secondary" style="color: var(--text-primary); border: 1px solid var(--border-color); background: transparent;">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
-body {
-    font-family: var(--font-family); background-color: var(--bg-main); color: var(--text-primary);
-    height: 100vh; overflow: hidden; display: flex; flex-direction: column;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
+    <nav class="top-navbar">
+        <div class="nav-brand">
+            <div class="brand-icon">$$</div>
+            <h2>Sistema Admin</h2>
+        </div>
+        <div class="nav-modules">
+            <button class="top-nav-btn active" data-module="module-balances">Balances</button>
+            <button class="top-nav-btn" data-module="module-sueldos">Sueldos</button>
+            <button class="top-nav-btn" data-module="module-proveedores">Proveedores</button>
+        </div>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="btn btn-icon" title="Alternar Modo Noche">
+                <svg id="moon-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z" /></svg>
+                <svg id="sun-icon" viewBox="0 0 24 24" width="20" height="20" class="hidden"><path fill="currentColor" d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.82,19 13.63,18.83 14.37,18.56L12,22Z" /></svg>
+            </button>
+            <button id="btn-refresh" class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 8px; vertical-align: middle;"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                Sincronizar
+            </button>
+        </div>
+    </nav>
 
-/* =========================================
-   LOADER ANTIFREEZE
-   ========================================= */
-.loader-overlay, .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center;
-    z-index: 9999; transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.loader-overlay { background-color: var(--bg-main); }
-.loader-overlay.hidden, .modal-overlay.hidden { opacity: 0; visibility: hidden; }
-.spinner-container { text-align: center; padding: 20px; }
-.spinner {
-    width: 50px; height: 50px;
-    border: 4px solid var(--border-color); border-top: 4px solid var(--primary-color); border-radius: 50%;
-    animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    margin: 0 auto 20px auto; will-change: transform;
-}
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-.loader-text { font-size: 12pt; font-weight: 500; color: var(--text-secondary); min-height: 24px; }
-.modal-content { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    <div id="module-balances" class="app-module active">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-tab="balance"><span>Balance Mensual</span></button>
+                <button class="menu-btn" data-tab="resumen-anual"><span>Resumen Anual</span></button>
+            </nav>
+            <div class="sidebar-history">
+                <h3 class="sidebar-heading">Historial y Edición</h3>
+                <div class="sidebar-group">
+                    <h4 class="sidebar-subheading text-danger">Gastos</h4>
+                    <div id="sidebar-gastos-list" class="sidebar-dynamic-list"></div>
+                </div>
+                <div class="sidebar-group">
+                    <h4 class="sidebar-subheading text-success">Ingresos</h4>
+                    <div id="sidebar-ingresos-list" class="sidebar-dynamic-list"></div>
+                </div>
+                <div class="sidebar-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9pt; border-style: dashed; justify-content: center;">+ Agregar Cuenta</button>
+                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9pt; border-style: dashed; color: var(--danger-color); border-color: var(--danger-color); justify-content: center;">- Eliminar Cuenta</button>
+                </div>
+            </div>
+        </aside>
 
-/* =========================================
-   NAVEGACIÓN SUPERIOR (PESTAÑAS SOLAPADAS HORIZONTALES)
-   ========================================= */
-.top-navbar {
-    display: flex; justify-content: space-between; align-items: flex-end; height: 70px;
-    padding: 0 24px; background-color: var(--card-bg); border-bottom: 2px solid var(--primary-color); flex-shrink: 0; z-index: 100;
-}
-.nav-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
-.nav-brand .brand-icon {
-    background-color: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 8px;
-    display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 12pt;
-}
-.nav-brand h2 { font-size: 13pt; font-weight: 700; }
-.nav-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        <main class="main-content">
+            <header class="main-header" style="padding-bottom: 15px;">
+                <div class="header-title">
+                    <h1 id="tab-title">Balance</h1>
+                    <p class="header-subtitle" id="tab-subtitle">Resumen consolidado de ingresos y gastos</p>
+                </div>
+            </header>
+            <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                <section id="view-balance" class="tab-view active">
+                    <div class="card selector-card">
+                        <div class="selector-group">
+                            <div class="control-field">
+                                <label for="select-month">Mes</label>
+                                <select id="select-month" class="form-control">
+                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="control-field">
+                                <label for="select-year">Año</label>
+                                <select id="select-year" class="form-control">
+                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="error-container" class="alert alert-danger hidden"><span id="error-message">Error al conectar.</span></div>
+                    <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No se registraron movimientos en este período.</div>
+                    <div id="balance-content-wrapper">
+                        <div class="card financial-section">
+                            <h3 class="section-title text-left">Gastos</h3>
+                            <div class="list-container accordion-container" id="gastos-list"></div>
+                            <div class="section-total-row">
+                                <span class="total-label text-left">TOTAL GASTOS DEL MES</span>
+                                <span class="total-amount text-right" id="total-gastos-value">$ 0,00</span>
+                            </div>
+                        </div>
+                        <div class="card financial-section" id="ingresos-section">
+                            <h3 class="section-title text-left">Ingresos</h3>
+                            <div class="list-container accordion-container" id="ingresos-list"></div>
+                            <div class="section-total-row">
+                                <span class="total-label text-left">TOTAL INGRESOS DEL MES</span>
+                                <span class="total-amount text-right" id="total-ingresos-value">$ 0,00</span>
+                            </div>
+                        </div>
+                        <div class="card balance-result-card" id="balance-result-card">
+                            <div class="balance-final-row">
+                                <span class="final-label text-left">BALANCE DEL MES</span>
+                                <span class="final-amount text-right" id="final-balance-value">$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="view-resumen-anual" class="tab-view">
+                    <div class="card">
+                        <h3 class="section-title text-left">Resumen Consolidado Anual</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                               <thead><tr><th class="text-left">Métrica de Rendimiento</th><th class="text-right">Monto Acumulado</th></tr></thead>
+                               <tbody>
+                                   <tr><td class="text-left">Ingresos Totales del Año</td><td class="text-right text-success" id="annual-ingresos">$ 0,00</td></tr>
+                                   <tr><td class="text-left">Gastos Totales del Año</td><td class="text-right text-danger" id="annual-gastos">$ 0,00</td></tr>
+                                   <tr class="table-total-row"><td class="text-left">Balance Neto Acumulado</td><td class="text-right" id="annual-balance">$ 0,00</td></tr>
+                               </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                <section id="view-historial" class="tab-view" style="flex-grow: 1; flex-direction: column;">
+                    <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+                            <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                                <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9pt;">+ Nueva Operación</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
+                            <table class="data-table hidden" id="historial-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th>
+                                        <th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th>
+                                        <th class="text-left">IVA Cont.</th><th class="text-center">Comprobante C.</th><th class="text-center">Comprobante P.</th>
+                                        <th class="text-center sticky-col" id="col-acciones-historial">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historial-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 15px;">
+                            <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
+                        </div>
+                        <div id="carpetas-config-section" class="card hidden" style="flex-shrink: 0; margin-bottom: 24px; border: 1px dashed var(--primary-color); background-color: rgba(59, 130, 246, 0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                                <h3 class="section-title text-left" style="margin: 0; font-size: 11.5pt;">Carpetas de Drive enlazadas</h3>
+                                <div class="action-buttons">
+                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button><button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button><button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
+                                </div>
+                            </div>
+                            <div class="selector-group" style="gap: 15px;">
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Cuenta</label><div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Compra</label><div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label><div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                            </div>
+                        </div>
+                        <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros para este período.</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
 
-/* Efecto de Carpeta Solapada Top */
-.nav-modules { display: flex; align-items: flex-end; gap: 0; padding-top: 15px; }
-.top-nav-btn {
-    background-color: var(--hover-bg); border: 1px solid var(--border-color); border-bottom: none;
-    border-radius: 12px 12px 0 0; padding: 12px 24px; margin-right: -12px; 
-    position: relative; z-index: 1; font-weight: 600; font-size: 10.5pt; color: var(--text-secondary);
-    cursor: pointer; transition: all 0.2s; box-shadow: -3px 0px 8px rgba(0,0,0,0.04);
-}
-.top-nav-btn:hover { background-color: var(--card-bg); z-index: 2; color: var(--text-primary); }
-.top-nav-btn.active {
-    background-color: var(--primary-color); color: white; z-index: 3;
-    border-color: var(--primary-color); box-shadow: 0px 0px 10px rgba(59, 130, 246, 0.4);
-}
+    <div id="module-proveedores" class="app-module hidden">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-prov-tab="gen"><span>Proveedor</span></button>
+                <button class="menu-btn" data-prov-tab="ban"><span>Datos Bancarios</span></button>
+                <button class="menu-btn" data-prov-tab="con"><span>Datos de Contacto</span></button>
+            </nav>
+            <div class="sidebar-history">
+                <h3 class="sidebar-heading">Gestión Comercial</h3>
+                <p style="font-size: 9pt; padding: 0 10px; color: var(--text-secondary);">Administración de proveedores, cuentas y contactos.</p>
+            </div>
+        </aside>
 
-/* =========================================
-   LAYOUT Y SIDEBAR (PESTAÑAS SOLAPADAS VERTICALES)
-   ========================================= */
-.app-module { display: none; flex-grow: 1; height: calc(100vh - 70px); overflow: hidden; }
-.app-module.active { display: flex; }
-.sidebar {
-    width: 280px; background-color: var(--bg-sidebar); color: var(--sidebar-text);
-    display: flex; flex-direction: column; padding: 24px 16px; flex-shrink: 0; border-right: 1px solid var(--border-color); overflow-y: auto;
-}
-.sidebar::-webkit-scrollbar { width: 6px; }
-.sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        <main class="main-content">
+            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0;">
+                <div class="header-title">
+                    <h1 id="prov-tab-title">Directorio de Proveedores</h1>
+                    <p class="header-subtitle" id="prov-tab-subtitle">Datos generales del proveedor</p>
+                </div>
+                <button id="btn-add-proveedor" class="btn" style="background-color: var(--primary-color); color: white;">
+                    + Nuevo Proveedor
+                </button>
+            </header>
 
-/* Efecto de Carpeta Solapada Lateral */
-.sidebar-menu, .sidebar-dynamic-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; flex-shrink: 0; }
-.menu-btn, .history-btn {
-    background: var(--sidebar-bg-active); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px 8px 0 0;
-    margin-bottom: -6px; position: relative; z-index: 1; color: var(--sidebar-text); padding: 12px 16px;
-    display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 10.5pt; font-weight: 500; text-align: left;
-    box-shadow: 0 -3px 6px rgba(0,0,0,0.2); transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.menu-btn:hover, .history-btn:hover { background-color: rgba(255,255,255,0.1); color: var(--sidebar-text-active); z-index: 2; }
-.menu-btn.active, .history-btn.active {
-    background-color: var(--primary-color); color: white; font-weight: 600; z-index: 3;
-    border-color: var(--primary-color); box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
-}
+            <div class="card" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding: 0;">
+                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 24px;">
+                    <table class="data-table" id="proveedores-table">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Proveedor</th>
+                                <th class="text-left">Nombre</th>
+                                <th class="text-left col-prov-gen">Dirección</th>
+                                <th class="text-left col-prov-ban hidden">Banco</th>
+                                <th class="text-left col-prov-ban hidden">Alias</th>
+                                <th class="text-left col-prov-ban hidden">CBU</th>
+                                <th class="text-left col-prov-con hidden">Teléfono</th>
+                                <th class="text-left col-prov-con hidden">Mail</th>
+                                <th class="text-center col-prov-con hidden">Web</th>
+                                <th class="text-center sticky-col">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proveedores-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
 
-.sidebar-history { flex-grow: 1; display: flex; flex-direction: column; gap: 16px; }
-.sidebar-heading { font-size: 10pt; text-transform: uppercase; color: var(--sidebar-text); margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
-.sidebar-subheading { font-size: 9pt; text-transform: uppercase; margin-bottom: 10px; padding-left: 8px; }
-.sidebar-footer { padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 9pt; color: var(--sidebar-text); text-align: center; margin-top: 20px; flex-shrink: 0; }
-
-/* =========================================
-   CONTENIDO PRINCIPAL
-   ========================================= */
-.main-content { flex-grow: 1; padding: 30px 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
-.main-content.full-width { max-width: 1500px; margin: 0 auto; width: 100%; }
-.main-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; flex-shrink: 0; }
-.main-header h1 { font-size: 18pt; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-.header-subtitle { font-size: 10.5pt; color: var(--text-secondary); }
-.card { background-color: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px; }
-.card:last-child { margin-bottom: 0; }
-.selector-group { display: flex; gap: 20px; flex-wrap: wrap; }
-.control-field { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
-.control-field label { font-size: 9.5pt; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; }
-.form-control { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-primary); font-size: 11pt; font-weight: 500; outline: none; cursor: pointer; }
-
-/* =========================================
-   ACORDEÓN LINEAL LIMPIO
-   ========================================= */
-.section-title { font-size: 13pt; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; border-left: 4px solid var(--primary-color); padding-left: 10px; }
-#ingresos-section .section-title { border-left-color: var(--success-color); }
-.accordion-container { display: flex; flex-direction: column; border: none; background: transparent; }
-.accordion-item { border-bottom: 1px solid var(--border-color); background: transparent; }
-.accordion-item:last-child { border-bottom: none; }
-.accordion-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 4px; background-color: transparent; cursor: pointer; user-select: none; transition: background-color 0.2s; }
-.accordion-header:hover { background-color: rgba(0, 0, 0, 0.02); }
-body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0.02); }
-.accordion-title-group { display: flex; align-items: center; gap: 10px; }
-.accordion-icon { width: 16px; height: 16px; transition: transform 0.25s ease; color: var(--text-secondary); }
-.accordion-item.open .accordion-icon { transform: rotate(180deg); }
-.item-name { font-weight: 600; color: var(--text-primary); font-size: 11pt; }
-.item-val { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-primary); font-size: 11.5pt; opacity: 1; transition: opacity 0.2s ease; }
-.accordion-item.open .item-val { opacity: 0; pointer-events: none; }
-.accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-.accordion-content { padding: 10px 0 20px 28px; }
-
-/* =========================================
-   TABLAS 
-   ========================================= */
-.table-responsive { width: 100%; overflow-x: auto; }
-.nowrap-table table { min-width: max-content; }
-.nowrap-table th, .nowrap-table td { white-space: nowrap; font-size: 9pt; }
-.detail-table, .data-table { width: 100%; border-collapse: collapse; font-size: 10pt; background-color: var(--card-bg); }
-.detail-table th, .data-table th, .detail-table td, .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-.detail-table th, .data-table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 8.5pt; }
-.detail-table tr:hover, .data-table tbody tr:hover { background-color: var(--hover-bg); }
-.sticky-col { position: sticky; right: 0; background-color: var(--card-bg); box-shadow: -3px 0 6px rgba(0,0,0,0.05); z-index: 2; }
-.data-table th.sticky-col { background-color: var(--table-header-bg); z-index: 3; }
-
-.edit-input { width: 100%; padding: 6px 8px; border: 1px solid var(--primary-color); border-radius: 4px; background-color: var(--bg-main); color: var(--text-primary); font-size: 9pt; outline: none; }
-.action-buttons { display: flex; gap: 6px; justify-content: center; align-items: center; }
-.action-btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 8.5pt; font-weight: 600; color: white; }
-.btn-edit { background-color: var(--primary-color); }
-.btn-save { background-color: var(--success-color); }
-.btn-cancel { background-color: var(--text-secondary); }
-.btn-delete { background-color: var(--danger-color); }
-.btn-link { background-color: #6366f1; } 
-.btn { padding: 10px 18px; border-radius: 8px; font-size: 10pt; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
-.btn-icon { padding: 8px; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
-
-.section-total-row { display: flex; justify-content: space-between; align-items: center; padding: 16px; background-color: var(--table-header-bg); border-radius: 8px; margin-top: 16px; border: 1px solid var(--border-color); }
-.total-label { font-weight: 700; font-size: 11pt; color: var(--text-primary); }
-.total-amount { font-weight: 800; font-size: 12pt; font-variant-numeric: tabular-nums; }
-.balance-result-card { background: var(--card-bg); border-left: 6px solid var(--border-color); }
-.balance-result-card.positive { border-left-color: var(--success-color); background-color: rgba(16, 185, 129, 0.05); }
-.balance-result-card.negative { border-left-color: var(--danger-color); background-color: rgba(239, 68, 68, 0.05); }
-.balance-final-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-.final-label { font-weight: 800; font-size: 13pt; color: var(--text-primary); }
-.final-amount { font-weight: 900; font-size: 16pt; font-variant-numeric: tabular-nums; }
-.table-total-row { font-weight: bold; background-color: var(--table-header-bg); }
-
-.text-left { text-align: left; } .text-right { text-align: right; } .text-center { text-align: center; }
-.text-success { color: var(--success-color) !important; } .text-danger { color: var(--danger-color) !important; }
-.hidden { display: none !important; }
-.alert { padding: 14px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 10.5pt; line-height: 1.5; border: 1px solid transparent; }
-.alert-danger { background-color: rgba(239, 68, 68, 0.1); border-color: var(--danger-color); color: var(--danger-color); }
-.tab-view { display: none; } .tab-view.active { display: block; animation: fadeIn 0.3s; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-@media (max-width: 768px) {
-    body { height: auto; overflow: auto; }
-    .top-navbar { padding: 0 16px; flex-wrap: wrap; height: auto; gap: 10px; padding: 10px 0; }
-    .app-module { height: auto; flex-direction: column; }
-    .sidebar { width: 100%; padding: 16px; border-right: none; border-bottom: 1px solid var(--border-color); }
-    .main-content { padding: 16px; } .main-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .header-actions, .selector-group, .control-field { width: 100%; flex-direction: column; }
-    .sticky-col { position: static; box-shadow: none; border-left: 1px solid var(--border-color); }
-    .accordion-content { padding-left: 12px; }
-}
+    <div id="module-sueldos" class="app-module hidden">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-tab="registro-sueldos"><span>Registro de Sueldos</span></button>
+            </nav>
+            <div class="sidebar-history"><h3 class="sidebar-heading">Gestión de RRHH</h3></div>
+        </aside>
+        <main class="main-content">
+            <header class="main-header" style="padding-bottom: 15px;">
+                <div class="header-title"><h1>Liquidación de Sueldos</h1></div>
+            </header>
+            <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div class="card selector-card" style="margin-bottom: 20px;">
+                        <div class="selector-group">
+                            <div class="control-field">
+                                <label for="sueldos-month">Mes a liquidar</label>
+                                <select id="sueldos-month" class="form-control"><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                            </div>
+                            <div class="control-field">
+                                <label for="sueldos-year">Año</label>
+                                <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros.</div>
+                    <div class="card" id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                            <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="btn-sueldos-add" class="btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
+                                <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white;">Editar Tabla</button>
+                                <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white;">Guardar Cambios</button>
+                                <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 0 20px 20px 20px;">
+                            <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
