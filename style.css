@@ -47,7 +47,7 @@ body {
 }
 
 /* =========================================
-   LOADER ANTIFREEZE (DINÁMICO Y FLUIDO)
+   LOADER ANTIFREEZE
    ========================================= */
 .loader-overlay, .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -57,7 +57,6 @@ body {
 .loader-overlay { background-color: var(--bg-main); }
 .loader-overlay.hidden, .modal-overlay.hidden { opacity: 0; visibility: hidden; }
 .spinner-container { text-align: center; padding: 20px; }
-
 .spinner {
     width: 50px; height: 50px;
     border: 4px solid var(--border-color); border-top: 4px solid var(--primary-color); border-radius: 50%;
@@ -66,38 +65,41 @@ body {
 }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .loader-text { font-size: 12pt; font-weight: 500; color: var(--text-secondary); min-height: 24px; }
-
-.modal-content {
-    background-color: var(--card-bg); border: 1px solid var(--border-color);
-    border-radius: 12px; padding: 24px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-}
+.modal-content { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
 /* =========================================
-   NAVEGACIÓN SUPERIOR
+   NAVEGACIÓN SUPERIOR (PESTAÑAS SOLAPADAS HORIZONTALES)
    ========================================= */
 .top-navbar {
-    display: flex; justify-content: space-between; align-items: center; height: 64px;
-    padding: 0 24px; background-color: var(--card-bg); border-bottom: 1px solid var(--border-color); flex-shrink: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: flex-end; height: 70px;
+    padding: 0 24px; background-color: var(--card-bg); border-bottom: 2px solid var(--primary-color); flex-shrink: 0; z-index: 100;
 }
-.nav-brand { display: flex; align-items: center; gap: 12px; }
+.nav-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
 .nav-brand .brand-icon {
     background-color: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 8px;
     display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 12pt;
 }
 .nav-brand h2 { font-size: 13pt; font-weight: 700; }
-.nav-modules { display: flex; gap: 10px; }
+.nav-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+
+/* Efecto de Carpeta Solapada Top */
+.nav-modules { display: flex; align-items: flex-end; gap: 0; padding-top: 15px; }
 .top-nav-btn {
-    padding: 8px 16px; background: transparent; border: none; border-radius: 6px;
-    color: var(--text-secondary); font-weight: 600; font-size: 10.5pt; cursor: pointer; transition: all 0.2s;
+    background-color: var(--hover-bg); border: 1px solid var(--border-color); border-bottom: none;
+    border-radius: 12px 12px 0 0; padding: 12px 24px; margin-right: -12px; 
+    position: relative; z-index: 1; font-weight: 600; font-size: 10.5pt; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s; box-shadow: -3px 0px 8px rgba(0,0,0,0.04);
 }
-.top-nav-btn:hover { background-color: var(--hover-bg); color: var(--text-primary); }
-.top-nav-btn.active { background-color: var(--primary-color); color: white; }
-.nav-actions { display: flex; align-items: center; gap: 12px; }
+.top-nav-btn:hover { background-color: var(--card-bg); z-index: 2; color: var(--text-primary); }
+.top-nav-btn.active {
+    background-color: var(--primary-color); color: white; z-index: 3;
+    border-color: var(--primary-color); box-shadow: 0px 0px 10px rgba(59, 130, 246, 0.4);
+}
 
 /* =========================================
-   LAYOUT Y SIDEBAR
+   LAYOUT Y SIDEBAR (PESTAÑAS SOLAPADAS VERTICALES)
    ========================================= */
-.app-module { display: none; flex-grow: 1; height: calc(100vh - 64px); overflow: hidden; }
+.app-module { display: none; flex-grow: 1; height: calc(100vh - 70px); overflow: hidden; }
 .app-module.active { display: flex; }
 .sidebar {
     width: 280px; background-color: var(--bg-sidebar); color: var(--sidebar-text);
@@ -105,27 +107,28 @@ body {
 }
 .sidebar::-webkit-scrollbar { width: 6px; }
 .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-.sidebar-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; flex-shrink: 0; }
-.menu-btn {
-    background: none; border: none; color: var(--sidebar-text); padding: 12px 16px; border-radius: 8px;
-    display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 11pt; font-weight: 500; text-align: left; width: 100%;
+
+/* Efecto de Carpeta Solapada Lateral */
+.sidebar-menu, .sidebar-dynamic-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; flex-shrink: 0; }
+.menu-btn, .history-btn {
+    background: var(--sidebar-bg-active); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px 8px 0 0;
+    margin-bottom: -6px; position: relative; z-index: 1; color: var(--sidebar-text); padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 10.5pt; font-weight: 500; text-align: left;
+    box-shadow: 0 -3px 6px rgba(0,0,0,0.2); transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.menu-btn:hover { background-color: rgba(255,255,255,0.05); color: var(--sidebar-text-active); }
-.menu-btn.active { background-color: var(--sidebar-bg-active); color: var(--sidebar-text-active); font-weight: 600; border-left: 3px solid var(--primary-color); }
+.menu-btn:hover, .history-btn:hover { background-color: rgba(255,255,255,0.1); color: var(--sidebar-text-active); z-index: 2; }
+.menu-btn.active, .history-btn.active {
+    background-color: var(--primary-color); color: white; font-weight: 600; z-index: 3;
+    border-color: var(--primary-color); box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+}
+
 .sidebar-history { flex-grow: 1; display: flex; flex-direction: column; gap: 16px; }
-.sidebar-heading { font-size: 10pt; text-transform: uppercase; color: var(--sidebar-text); margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
-.sidebar-subheading { font-size: 9pt; text-transform: uppercase; margin-bottom: 6px; padding-left: 8px; }
-.sidebar-dynamic-list { display: flex; flex-direction: column; gap: 4px; }
-.history-btn {
-    background: none; border: none; color: var(--sidebar-text); padding: 8px 12px 8px 20px; border-radius: 6px;
-    cursor: pointer; font-size: 10pt; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.history-btn:hover { color: var(--sidebar-text-active); background-color: rgba(255,255,255,0.05); }
-.history-btn.active { color: var(--sidebar-text-active); font-weight: 600; border-left: 3px solid var(--primary-color); background-color: var(--sidebar-bg-active); }
-.sidebar-footer { padding-top: 16px; border-top: 1px solid var(--border-color); font-size: 9pt; color: var(--sidebar-text); text-align: center; margin-top: 20px; flex-shrink: 0; }
+.sidebar-heading { font-size: 10pt; text-transform: uppercase; color: var(--sidebar-text); margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+.sidebar-subheading { font-size: 9pt; text-transform: uppercase; margin-bottom: 10px; padding-left: 8px; }
+.sidebar-footer { padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 9pt; color: var(--sidebar-text); text-align: center; margin-top: 20px; flex-shrink: 0; }
 
 /* =========================================
-   CONTENIDO PRINCIPAL Y CARD
+   CONTENIDO PRINCIPAL
    ========================================= */
 .main-content { flex-grow: 1; padding: 30px 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
 .main-content.full-width { max-width: 1500px; margin: 0 auto; width: 100%; }
@@ -137,56 +140,30 @@ body {
 .selector-group { display: flex; gap: 20px; flex-wrap: wrap; }
 .control-field { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
 .control-field label { font-size: 9.5pt; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; }
-.form-control {
-    padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg);
-    color: var(--text-primary); font-size: 11pt; font-weight: 500; outline: none; cursor: pointer;
-}
+.form-control { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-primary); font-size: 11pt; font-weight: 500; outline: none; cursor: pointer; }
 
 /* =========================================
-   NUEVO DISEÑO DE ACORDEÓN (LÍNEAS LIMPIAS SIN RECUADROS)
+   ACORDEÓN LINEAL LIMPIO
    ========================================= */
 .section-title { font-size: 13pt; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; border-left: 4px solid var(--primary-color); padding-left: 10px; }
 #ingresos-section .section-title { border-left-color: var(--success-color); }
-
-.accordion-container { 
-    display: flex; flex-direction: column; 
-    border: none; background: transparent; /* Eliminamos marco exterior */
-}
-.accordion-item { 
-    border-bottom: 1px solid var(--border-color); background: transparent; /* Solo línea divisoria inferior */
-}
+.accordion-container { display: flex; flex-direction: column; border: none; background: transparent; }
+.accordion-item { border-bottom: 1px solid var(--border-color); background: transparent; }
 .accordion-item:last-child { border-bottom: none; }
-
-.accordion-header {
-    display: flex; justify-content: space-between; align-items: center; 
-    padding: 14px 4px; background-color: transparent; /* Sin fondo de recuadro */
-    cursor: pointer; user-select: none; transition: background-color 0.2s;
-}
-.accordion-header:hover { 
-    background-color: rgba(0, 0, 0, 0.02); /* Sutil feedback lineal al pasar el mouse */
-}
+.accordion-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 4px; background-color: transparent; cursor: pointer; user-select: none; transition: background-color 0.2s; }
+.accordion-header:hover { background-color: rgba(0, 0, 0, 0.02); }
 body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0.02); }
-
 .accordion-title-group { display: flex; align-items: center; gap: 10px; }
-
-/* Icono/Flecha a la izquierda */
-.accordion-icon { 
-    width: 16px; height: 16px; transition: transform 0.25s ease; color: var(--text-secondary); 
-}
+.accordion-icon { width: 16px; height: 16px; transition: transform 0.25s ease; color: var(--text-secondary); }
 .accordion-item.open .accordion-icon { transform: rotate(180deg); }
-
 .item-name { font-weight: 600; color: var(--text-primary); font-size: 11pt; }
 .item-val { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-primary); font-size: 11.5pt; opacity: 1; transition: opacity 0.2s ease; }
 .accordion-item.open .item-val { opacity: 0; pointer-events: none; }
-
-/* CUERPO INDENTADO HACIA LA DERECHA */
 .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-.accordion-content { 
-    padding: 10px 0 20px 28px; /* 28px de indentación hacia la derecha */
-}
+.accordion-content { padding: 10px 0 20px 28px; }
 
 /* =========================================
-   TABLAS Y ELEMENTOS STICKY
+   TABLAS 
    ========================================= */
 .table-responsive { width: 100%; overflow-x: auto; }
 .nowrap-table table { min-width: max-content; }
@@ -195,7 +172,6 @@ body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0
 .detail-table th, .data-table th, .detail-table td, .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 .detail-table th, .data-table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 8.5pt; }
 .detail-table tr:hover, .data-table tbody tr:hover { background-color: var(--hover-bg); }
-
 .sticky-col { position: sticky; right: 0; background-color: var(--card-bg); box-shadow: -3px 0 6px rgba(0,0,0,0.05); z-index: 2; }
 .data-table th.sticky-col { background-color: var(--table-header-bg); z-index: 3; }
 
@@ -237,5 +213,5 @@ body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0
     .main-content { padding: 16px; } .main-header { flex-direction: column; align-items: flex-start; gap: 12px; }
     .header-actions, .selector-group, .control-field { width: 100%; flex-direction: column; }
     .sticky-col { position: static; box-shadow: none; border-left: 1px solid var(--border-color); }
-    .accordion-content { padding-left: 12px; } /* Menor espacio en celular */
+    .accordion-content { padding-left: 12px; }
 }
