@@ -17,12 +17,12 @@
     <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
 
     <div id="web-modal" class="modal-overlay hidden">
-        <div class="modal-content card">
+        <div class="modal-content">
             <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
             <p id="modal-prov-name" style="margin-bottom: 20px; font-weight: 600; color: var(--text-secondary);"></p>
             <div class="modal-body">
                 <div id="web-view-mode" style="text-align: center; padding: 20px 0;">
-                    <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex;">Visitar Sitio Web</a>
+                    <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex; text-decoration: none;">Visitar Sitio Web</a>
                     <p id="modal-no-web" class="text-danger hidden">Este proveedor no tiene una web registrada.</p>
                 </div>
                 <div id="web-edit-mode" class="hidden">
@@ -40,9 +40,9 @@
     </div>
 
     <nav class="top-navbar">
-        <div class="nav-brand" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+        <div class="nav-brand">
             <img src="logo.png" alt="Logo Residencial Francia" style="height: 40px; width: auto; display: block; border-radius: 0; object-fit: contain;">
-            <h2 style="font-size: 13.5pt;">Residencial Francia - Balances</h2>
+            <h2>Residencial Francia - Balances</h2>
         </div>
         <div class="nav-modules">
             <button class="top-nav-btn active" data-module="module-balances">Balances</button>
@@ -77,46 +77,47 @@
                     <h4 class="sidebar-subheading text-success">Ingresos</h4>
                     <div id="sidebar-ingresos-list" class="sidebar-dynamic-list"></div>
                 </div>
-                <div class="sidebar-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9pt; border-style: dashed; justify-content: center;">+ Agregar Cuenta</button>
-                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9pt; border-style: dashed; color: var(--danger-color); border-color: var(--danger-color); justify-content: center;">- Eliminar Cuenta</button>
+                <div class="sidebar-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9.5pt; color: var(--sidebar-text-active); border-color: rgba(255,255,255,0.2);">+ Agregar Cuenta</button>
+                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9.5pt; color: #f87171; border-color: rgba(239, 68, 68, 0.4);">- Eliminar Cuenta</button>
                 </div>
             </div>
         </aside>
 
         <main class="main-content">
-            <header class="main-header" style="padding-bottom: 15px;">
+            <header class="main-header">
                 <div class="header-title">
                     <h1 id="tab-title">Balance</h1>
                     <p class="header-subtitle" id="tab-subtitle">Resumen consolidado de ingresos y gastos</p>
                 </div>
             </header>
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
+                
                 <section id="view-balance" class="tab-view active">
-                    <div class="card selector-card">
-                        <div class="selector-group">
-                            <div class="control-field">
-                                <label for="select-month">Mes</label>
-                                <select id="select-month" class="form-control">
-                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
-                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
-                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                                </select>
-                            </div>
-                            <div class="control-field">
-                                <label for="select-year">Año</label>
-                                <select id="select-year" class="form-control">
-                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
-                                </select>
-                            </div>
+                    <div class="selector-group" style="margin-bottom: 30px;">
+                        <div class="control-field">
+                            <label for="select-month">Mes</label>
+                            <select id="select-month" class="form-control">
+                                <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                                <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                                <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="control-field">
+                            <label for="select-year">Año</label>
+                            <select id="select-year" class="form-control">
+                                <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+                                <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
+                            </select>
                         </div>
                     </div>
+                    
                     <div id="error-container" class="alert alert-danger hidden"><span id="error-message">Error al conectar.</span></div>
                     <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No se registraron movimientos en este período.</div>
+                    
                     <div id="balance-content-wrapper">
-                        <div class="card financial-section">
+                        <div class="financial-section" style="margin-bottom: 40px;">
                             <h3 class="section-title text-left">Gastos</h3>
                             <div class="list-container accordion-container" id="gastos-list"></div>
                             <div class="section-total-row">
@@ -124,7 +125,8 @@
                                 <span class="total-amount text-right" id="total-gastos-value">$ 0,00</span>
                             </div>
                         </div>
-                        <div class="card financial-section" id="ingresos-section">
+                        
+                        <div class="financial-section" id="ingresos-section" style="margin-bottom: 40px;">
                             <h3 class="section-title text-left">Ingresos</h3>
                             <div class="list-container accordion-container" id="ingresos-list"></div>
                             <div class="section-total-row">
@@ -132,7 +134,8 @@
                                 <span class="total-amount text-right" id="total-ingresos-value">$ 0,00</span>
                             </div>
                         </div>
-                        <div class="card balance-result-card" id="balance-result-card">
+                        
+                        <div class="balance-result-card" id="balance-result-card">
                             <div class="balance-final-row">
                                 <span class="final-label text-left">BALANCE DEL MES</span>
                                 <span class="final-amount text-right" id="final-balance-value">$ 0,00</span>
@@ -140,32 +143,33 @@
                         </div>
                     </div>
                 </section>
+
                 <section id="view-resumen-anual" class="tab-view">
-                    <div class="card">
-                        <h3 class="section-title text-left">Resumen Consolidado Anual</h3>
-                        <div class="table-responsive">
-                            <table class="data-table">
-                               <thead><tr><th class="text-left">Métrica de Rendimiento</th><th class="text-right">Monto Acumulado</th></tr></thead>
-                               <tbody>
-                                   <tr><td class="text-left">Ingresos Totales del Año</td><td class="text-right text-success" id="annual-ingresos">$ 0,00</td></tr>
-                                   <tr><td class="text-left">Gastos Totales del Año</td><td class="text-right text-danger" id="annual-gastos">$ 0,00</td></tr>
-                                   <tr class="table-total-row"><td class="text-left">Balance Neto Acumulado</td><td class="text-right" id="annual-balance">$ 0,00</td></tr>
-                               </tbody>
-                            </table>
-                        </div>
+                    <h3 class="section-title text-left" style="margin-bottom: 24px;">Resumen Consolidado Anual</h3>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                           <thead><tr><th class="text-left">Métrica de Rendimiento</th><th class="text-right">Monto Acumulado</th></tr></thead>
+                           <tbody>
+                               <tr><td class="text-left">Ingresos Totales del Año</td><td class="text-right text-success" id="annual-ingresos">$ 0,00</td></tr>
+                               <tr><td class="text-left">Gastos Totales del Año</td><td class="text-right text-danger" id="annual-gastos">$ 0,00</td></tr>
+                               <tr class="table-total-row"><td class="text-left">Balance Neto Acumulado</td><td class="text-right" id="annual-balance">$ 0,00</td></tr>
+                           </tbody>
+                        </table>
                     </div>
                 </section>
-                <section id="view-historial" class="tab-view" style="flex-grow: 1; flex-direction: column;">
-                    <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+
+                <section id="view-historial" class="tab-view" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
                             <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
-                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
-                                <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9pt;">+ Nueva Operación</button>
+                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                                <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9.5pt;">+ Nueva Operación</button>
                             </div>
                         </div>
-                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
+                        
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
                                     <tr id="historial-thead-tr">
@@ -173,24 +177,41 @@
                                 </thead>
                                 <tbody id="historial-tbody"></tbody>
                             </table>
+                            <div id="historial-empty" class="alert hidden" style="text-align:center; margin-top: 20px;">No hay registros para este período.</div>
                         </div>
-                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 15px;">
+
+                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-top: 0; margin-bottom: 30px;">
                             <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
                         </div>
-                        <div id="carpetas-config-section" class="card hidden" style="flex-shrink: 0; margin-bottom: 24px; border: 1px dashed var(--primary-color); background-color: rgba(59, 130, 246, 0.02);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                                <h3 class="section-title text-left" style="margin: 0; font-size: 11.5pt;">Carpetas de Drive enlazadas</h3>
+
+                        <div id="carpetas-config-section" class="hidden" style="flex-shrink: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <h3 class="section-title text-left" style="margin: 0; border: none; font-size: 10pt; opacity: 0.7;">Enlaces de Drive</h3>
                                 <div class="action-buttons">
-                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button><button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button><button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
+                                    <button id="btn-edit-carpetas" class="action-btn btn-edit" style="background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 4px 8px;">Editar IDs</button>
+                                    <button id="btn-save-carpetas" class="action-btn btn-save hidden" style="padding: 4px 8px;">Guardar</button>
+                                    <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden" style="padding: 4px 8px;">Cancelar</button>
                                 </div>
                             </div>
-                            <div class="selector-group" style="gap: 15px;">
-                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Cuenta</label><div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
-                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Compra</label><div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
-                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label><div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                            <div class="selector-group" style="gap: 12px;">
+                                <div class="control-field" style="flex: 1; min-width: 150px;">
+                                    <label>ID Cuenta</label>
+                                    <div id="view-id-cuenta" class="form-control">-</div>
+                                    <input type="text" id="edit-id-cuenta" class="edit-input hidden" placeholder="ID">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 150px;">
+                                    <label>ID Compra</label>
+                                    <div id="view-id-compra" class="form-control">-</div>
+                                    <input type="text" id="edit-id-compra" class="edit-input hidden" placeholder="ID">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 150px;">
+                                    <label>ID Pago</label>
+                                    <div id="view-id-pago" class="form-control">-</div>
+                                    <input type="text" id="edit-id-pago" class="edit-input hidden" placeholder="ID">
+                                </div>
                             </div>
                         </div>
-                        <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros para este período.</div>
+
                     </div>
                 </section>
             </div>
@@ -211,21 +232,21 @@
         </aside>
 
         <main class="main-content">
-            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0; flex-wrap: wrap; gap: 15px;">
+            <header class="main-header" style="flex-wrap: wrap; gap: 15px;">
                 <div class="header-title">
                     <h1 id="prov-tab-title">Directorio de Proveedores</h1>
                     <p class="header-subtitle" id="prov-tab-subtitle">Datos generales del proveedor</p>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button id="btn-proveedores-add" class="btn btn-secondary hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Proveedor</button>
-                    <button id="btn-proveedores-edit-mode" class="btn" style="background-color: var(--primary-color); color: white;">Editar Tabla</button>
-                    <button id="btn-proveedores-save" class="btn hidden" style="background-color: var(--success-color); color: white;">Guardar Cambios</button>
+                    <button id="btn-proveedores-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Proveedor</button>
+                    <button id="btn-proveedores-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
+                    <button id="btn-proveedores-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
                     <button id="btn-proveedores-cancel" class="btn btn-secondary hidden">Cancelar</button>
                 </div>
             </header>
 
-            <div class="card" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding: 0;">
-                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 24px;">
+            <div style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding-top: 10px;">
+                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
                     <table class="data-table" id="proveedores-table">
                         <thead>
                             <tr>
@@ -255,35 +276,33 @@
             <div class="sidebar-history"><h3 class="sidebar-heading">Gestión de RRHH</h3></div>
         </aside>
         <main class="main-content">
-            <header class="main-header" style="padding-bottom: 15px;">
+            <header class="main-header">
                 <div class="header-title"><h1>Liquidación de Sueldos</h1></div>
             </header>
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
                 <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
-                    <div class="card selector-card" style="margin-bottom: 20px;">
-                        <div class="selector-group">
-                            <div class="control-field">
-                                <label for="sueldos-month">Mes a liquidar</label>
-                                <select id="sueldos-month" class="form-control"><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
-                            </div>
-                            <div class="control-field">
-                                <label for="sueldos-year">Año</label>
-                                <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-                            </div>
+                    <div class="selector-group" style="margin-bottom: 20px;">
+                        <div class="control-field">
+                            <label for="sueldos-month">Mes a liquidar</label>
+                            <select id="sueldos-month" class="form-control"><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                        </div>
+                        <div class="control-field">
+                            <label for="sueldos-year">Año</label>
+                            <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
                         </div>
                     </div>
                     <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros.</div>
-                    <div class="card" id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                    <div id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
                             <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
                             <div style="display: flex; gap: 10px;">
-                                <button id="btn-sueldos-add" class="btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
-                                <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white;">Editar Tabla</button>
-                                <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white;">Guardar Cambios</button>
+                                <button id="btn-sueldos-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
+                                <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
+                                <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
                                 <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
                             </div>
                         </div>
-                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 0 20px 20px 20px;">
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
                             <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
                         </div>
                     </div>
