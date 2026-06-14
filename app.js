@@ -42,7 +42,6 @@ function initTheme() {
     });
 }
 
-// Convertidor robusto de Fechas a formato Argentino (DD/MM/AAAA)
 function formatDateToAR(dateStr) {
     if (!dateStr || dateStr === "-") return "";
     const str = dateStr.toString();
@@ -53,7 +52,6 @@ function formatDateToAR(dateStr) {
     return str.split(" ")[0];
 }
 
-// Convertidor robusto de Monedas (Interpreta puntos, comas y signos)
 function parseMonto(val) {
     if (val === "" || val === null || val === undefined || val === "-") return 0;
     if (typeof val === 'number') return val;
@@ -133,14 +131,13 @@ function injectSueldosIntoBalances() {
                 else if (valE > 0) methodStr = "Efectivo"; 
                 else if (valT > 0) methodStr = "Transferencia";
 
-                // Sueldo Final
                 const sueldoNum = parseMonto(rData[offset + 13]);
                 const fechaRawSueldo = rData[offset + 12];
                 if (sueldoNum > 0) {
                     gastosSueldos[periodKey].push({
-                        rowIndex: `s_${wIndex}_${m}_SF`, // Identificador único virtual para que no se pisen
+                        rowIndex: `s_${wIndex}_${m}_SF`, 
                         fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${year}`,
-                        detalle: nombre, // Mostramos solo el nombre en el historial
+                        detalle: nombre, 
                         monto: sueldoNum,
                         mes: MESES_NOMBRES[m],
                         metodoPago: methodStr,
@@ -151,7 +148,6 @@ function injectSueldosIntoBalances() {
                     });
                 }
 
-                // Adelantos
                 const adelantos = [
                     { tipo: "Adelanto 1", mIdx: 4, fIdx: 5 },
                     { tipo: "Adelanto 2", mIdx: 6, fIdx: 7 },
@@ -219,7 +215,7 @@ function setupEventListeners() {
         sendGlobalPostRequest("UPDATE_FOLDERS", payload);
     };
 
-    // Proveedores - Botones Globales
+    // Proveedores
     document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
@@ -239,9 +235,24 @@ function setupEventListeners() {
         renderProveedores();
     };
 
-    // Sueldos
+    // Sueldos con detector de Nuevo Año (TRANSICIÓN AUTOMÁTICA)
     document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); };
-    document.getElementById("sueldos-year").onchange = (e) => { appState.sueldosYear = e.target.value; renderSueldos(); };
+    document.getElementById("sueldos-year").onchange = (e) => { 
+        const newYear = e.target.value;
+        appState.sueldosYear = newYear; 
+        
+        // Si el año seleccionado no existe en el objeto sueldos
+        if (!appState.sueldos[newYear]) {
+            if (confirm(`El año ${newYear} no tiene registros de RRHH.\n\n¿Desea inicializar este año automáticamente copiando a los trabajadores que estuvieron activos en Diciembre de ${newYear - 1}?`)) {
+                sendGlobalPostRequest("SUELDO_INIT_YEAR", { year: newYear });
+            } else {
+                renderSueldos();
+            }
+        } else {
+            renderSueldos(); 
+        }
+    };
+    
     document.getElementById("btn-sueldos-edit-mode").onclick = () => toggleSueldosEditMode(true);
     document.getElementById("btn-sueldos-cancel").onclick = () => toggleSueldosEditMode(false);
     document.getElementById("btn-sueldos-save").onclick = () => saveSueldos();
@@ -342,7 +353,7 @@ function openHistoryView(s, t, b) {
         document.getElementById("carpetas-config-section").classList.add("hidden");
         theadTr.innerHTML = `
             <th class="text-left">Nombre</th>
-            <th class="text-right">Sueldo</th>
+            <th class="text-right">Monto</th>
             <th class="text-left">Fecha de Pago</th>
             <th class="text-left">Mes</th>
             <th class="text-left">Método Pago</th>
@@ -373,6 +384,9 @@ function renderCarpetasSection(s) {
 function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
     const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
+
+    const colAcciones = document.getElementById("col-acciones-historial");
+    if(colAcciones) colAcciones.classList.toggle("hidden", s === "Liquidación de Sueldos");
 
     for (const p in tm) { const [y, m] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== m) continue; if (tm[p]) fm = fm.concat(tm[p]); }
     if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
