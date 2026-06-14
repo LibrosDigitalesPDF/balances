@@ -40,8 +40,8 @@
     </div>
 
     <nav class="top-navbar">
-        <div class="nav-brand">
-            <img src="logo.png" alt="Logo Residencial Francia" style="height: 38px; width: auto; border-radius: 6px;">
+        <div class="nav-brand" style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+            <img src="logo.png" alt="Logo Residencial Francia" style="height: 40px; width: auto; display: block; border-radius: 0; object-fit: contain;">
             <h2 style="font-size: 13.5pt;">Residencial Francia - Balances</h2>
         </div>
         <div class="nav-modules">
@@ -168,12 +168,8 @@
                         <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
-                                    <tr>
-                                        <th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th>
-                                        <th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th>
-                                        <th class="text-left">IVA Cont.</th><th class="text-center">Comprobante C.</th><th class="text-center">Comprobante P.</th>
-                                        <th class="text-center sticky-col" id="col-acciones-historial">Acciones</th>
-                                    </tr>
+                                    <tr id="historial-thead-tr">
+                                        </tr>
                                 </thead>
                                 <tbody id="historial-tbody"></tbody>
                             </table>
@@ -215,14 +211,17 @@
         </aside>
 
         <main class="main-content">
-            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0;">
+            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0; flex-wrap: wrap; gap: 15px;">
                 <div class="header-title">
                     <h1 id="prov-tab-title">Directorio de Proveedores</h1>
                     <p class="header-subtitle" id="prov-tab-subtitle">Datos generales del proveedor</p>
                 </div>
-                <button id="btn-add-proveedor" class="btn" style="background-color: var(--primary-color); color: white;">
-                    + Nuevo Proveedor
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-proveedores-add" class="btn btn-secondary hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Proveedor</button>
+                    <button id="btn-proveedores-edit-mode" class="btn" style="background-color: var(--primary-color); color: white;">Editar Tabla</button>
+                    <button id="btn-proveedores-save" class="btn hidden" style="background-color: var(--success-color); color: white;">Guardar Cambios</button>
+                    <button id="btn-proveedores-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                </div>
             </header>
 
             <div class="card" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding: 0;">
@@ -239,7 +238,6 @@
                                 <th class="text-left col-prov-con hidden">Teléfono</th>
                                 <th class="text-left col-prov-con hidden">Mail</th>
                                 <th class="text-center col-prov-con hidden">Web</th>
-                                <th class="text-center sticky-col">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="proveedores-tbody"></tbody>
