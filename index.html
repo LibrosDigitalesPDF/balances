@@ -20,19 +20,16 @@
         <div class="modal-content card">
             <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
             <p id="modal-prov-name" style="margin-bottom: 20px; font-weight: 600; color: var(--text-secondary);"></p>
-            
             <div class="modal-body">
                 <div id="web-view-mode" style="text-align: center; padding: 20px 0;">
                     <a id="modal-web-link" href="#" target="_blank" class="btn" style="background-color: var(--primary-color); color: white; display: inline-flex;">Visitar Sitio Web</a>
                     <p id="modal-no-web" class="text-danger hidden">Este proveedor no tiene una web registrada.</p>
                 </div>
-                
                 <div id="web-edit-mode" class="hidden">
                     <label style="font-size: 9.5pt; font-weight: 600; color: var(--text-secondary);">URL de la página web:</label>
                     <input type="text" id="modal-web-input" class="edit-input" style="margin-top: 8px; margin-bottom: 20px;" placeholder="Ej: https://www.proveedor.com">
                 </div>
             </div>
-            
             <div class="modal-footer action-buttons" style="justify-content: flex-end; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 15px;">
                 <button id="btn-modal-edit" class="action-btn btn-edit">Editar URL</button>
                 <button id="btn-modal-save" class="action-btn btn-save hidden">Guardar</button>
@@ -47,13 +44,11 @@
             <div class="brand-icon">$$</div>
             <h2>Sistema Admin</h2>
         </div>
-        
         <div class="nav-modules">
             <button class="top-nav-btn active" data-module="module-balances">Balances</button>
             <button class="top-nav-btn" data-module="module-sueldos">Sueldos</button>
             <button class="top-nav-btn" data-module="module-proveedores">Proveedores</button>
         </div>
-
         <div class="nav-actions">
             <button id="theme-toggle" class="btn btn-icon" title="Alternar Modo Noche">
                 <svg id="moon-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z" /></svg>
@@ -82,18 +77,11 @@
                     <h4 class="sidebar-subheading text-success">Ingresos</h4>
                     <div id="sidebar-ingresos-list" class="sidebar-dynamic-list"></div>
                 </div>
-
                 <div class="sidebar-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9pt; border-style: dashed; justify-content: center;">
-                        + Agregar Cuenta
-                    </button>
-                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9pt; border-style: dashed; color: var(--danger-color); border-color: var(--danger-color); justify-content: center;">
-                        - Eliminar Cuenta
-                    </button>
+                    <button id="btn-add-tab-sheet" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px; font-size: 9pt; border-style: dashed; justify-content: center;">+ Agregar Cuenta</button>
+                    <button id="btn-del-tab-sheet" class="btn btn-secondary" style="width: 100%; font-size: 9pt; border-style: dashed; color: var(--danger-color); border-color: var(--danger-color); justify-content: center;">- Eliminar Cuenta</button>
                 </div>
-
             </div>
-            <div class="sidebar-footer"><p>Módulo Balances v7.0</p></div>
         </aside>
 
         <main class="main-content">
@@ -103,9 +91,7 @@
                     <p class="header-subtitle" id="tab-subtitle">Resumen consolidado de ingresos y gastos</p>
                 </div>
             </header>
-
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
-                
                 <section id="view-balance" class="tab-view active">
                     <div class="card selector-card">
                         <div class="selector-group">
@@ -123,23 +109,12 @@
                                 <select id="select-year" class="form-control">
                                     <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
                                     <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
-                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
-                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
-                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
-                                    <option value="2039">2039</option><option value="2040">2040</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-
-                    <div id="error-container" class="alert alert-danger hidden">
-                        <span id="error-message">Error al conectar con la base de datos.</span>
-                    </div>
-
-                    <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">
-                        No se registraron movimientos en este período.
-                    </div>
-
+                    <div id="error-container" class="alert alert-danger hidden"><span id="error-message">Error al conectar.</span></div>
+                    <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No se registraron movimientos en este período.</div>
                     <div id="balance-content-wrapper">
                         <div class="card financial-section">
                             <h3 class="section-title text-left">Gastos</h3>
@@ -149,7 +124,6 @@
                                 <span class="total-amount text-right" id="total-gastos-value">$ 0,00</span>
                             </div>
                         </div>
-
                         <div class="card financial-section" id="ingresos-section">
                             <h3 class="section-title text-left">Ingresos</h3>
                             <div class="list-container accordion-container" id="ingresos-list"></div>
@@ -158,7 +132,6 @@
                                 <span class="total-amount text-right" id="total-ingresos-value">$ 0,00</span>
                             </div>
                         </div>
-
                         <div class="card balance-result-card" id="balance-result-card">
                             <div class="balance-final-row">
                                 <span class="final-label text-left">BALANCE DEL MES</span>
@@ -167,117 +140,60 @@
                         </div>
                     </div>
                 </section>
-
                 <section id="view-resumen-anual" class="tab-view">
                     <div class="card">
                         <h3 class="section-title text-left">Resumen Consolidado Anual</h3>
                         <div class="table-responsive">
                             <table class="data-table">
-                               <thead>
-                                   <tr>
-                                       <th class="text-left">Métrica de Rendimiento</th>
-                                       <th class="text-right">Monto Acumulado</th>
-                                   </tr>
-                               </thead>
+                               <thead><tr><th class="text-left">Métrica de Rendimiento</th><th class="text-right">Monto Acumulado</th></tr></thead>
                                <tbody>
-                                   <tr>
-                                       <td class="text-left">Ingresos Totales del Año</td>
-                                       <td class="text-right text-success" id="annual-ingresos">$ 0,00</td>
-                                   </tr>
-                                   <tr>
-                                       <td class="text-left">Gastos Totales del Año</td>
-                                       <td class="text-right text-danger" id="annual-gastos">$ 0,00</td>
-                                   </tr>
-                                   <tr class="table-total-row">
-                                       <td class="text-left">Balance Neto Acumulado</td>
-                                       <td class="text-right" id="annual-balance">$ 0,00</td>
-                                   </tr>
+                                   <tr><td class="text-left">Ingresos Totales del Año</td><td class="text-right text-success" id="annual-ingresos">$ 0,00</td></tr>
+                                   <tr><td class="text-left">Gastos Totales del Año</td><td class="text-right text-danger" id="annual-gastos">$ 0,00</td></tr>
+                                   <tr class="table-total-row"><td class="text-left">Balance Neto Acumulado</td><td class="text-right" id="annual-balance">$ 0,00</td></tr>
                                </tbody>
                             </table>
                         </div>
                     </div>
                 </section>
-
                 <section id="view-historial" class="tab-view" style="flex-grow: 1; flex-direction: column;">
                     <div class="card" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
                             <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
-                            
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9pt;">
-                                    <option value="ALL">Todo el Año</option>
-                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
-                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
-                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                                </select>
-                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9pt;">
-                                    <option value="ALL">Todos los Años</option>
-                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
-                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
-                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
-                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
-                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
-                                    <option value="2039">2039</option><option value="2040">2040</option>
-                                </select>
+                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
                                 <button id="btn-add-balance" class="btn hidden" style="background-color: var(--primary-color); color: white; padding: 6px 12px; font-size: 9pt;">+ Nueva Operación</button>
                             </div>
                         </div>
-                        
                         <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
                                     <tr>
-                                        <th class="text-left">Fecha</th>
-                                        <th class="text-left">Detalle</th>
-                                        <th class="text-right">Monto</th>
-                                        <th class="text-left">Operación</th>
-                                        <th class="text-left">IVA 21%</th>
-                                        <th class="text-left">IVA 10.5%</th>
-                                        <th class="text-left">IVA Cont.</th>
-                                        <th class="text-center">Comprobante C.</th>
-                                        <th class="text-center">Comprobante P.</th>
+                                        <th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th>
+                                        <th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th>
+                                        <th class="text-left">IVA Cont.</th><th class="text-center">Comprobante C.</th><th class="text-center">Comprobante P.</th>
                                         <th class="text-center sticky-col">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="historial-tbody"></tbody>
                             </table>
                         </div>
-
                         <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 15px;">
-                            <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span>
-                            <span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
+                            <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
                         </div>
-
                         <div id="carpetas-config-section" class="card hidden" style="flex-shrink: 0; margin-bottom: 24px; border: 1px dashed var(--primary-color); background-color: rgba(59, 130, 246, 0.02);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                                 <h3 class="section-title text-left" style="margin: 0; font-size: 11.5pt;">Carpetas de Drive enlazadas</h3>
                                 <div class="action-buttons">
-                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button>
-                                    <button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button>
-                                    <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
+                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button><button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button><button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
                                 </div>
                             </div>
-                            
                             <div class="selector-group" style="gap: 15px;">
-                                <div class="control-field" style="flex: 1; min-width: 200px;">
-                                    <label style="font-size: 8.5pt;">ID Carpeta Cuenta</label>
-                                    <div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID de la carpeta principal">-</div>
-                                    <input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
-                                </div>
-                                <div class="control-field" style="flex: 1; min-width: 200px;">
-                                    <label style="font-size: 8.5pt;">ID Carpeta Compra</label>
-                                    <div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de compras">-</div>
-                                    <input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
-                                </div>
-                                <div class="control-field" style="flex: 1; min-width: 200px;">
-                                    <label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label>
-                                    <div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de pagos/ventas">-</div>
-                                    <input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
-                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Cuenta</label><div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Compra</label><div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;"><label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label><div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</div><input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí"></div>
                             </div>
                         </div>
-
                         <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros para este período.</div>
                     </div>
                 </section>
@@ -286,11 +202,23 @@
     </div>
 
     <div id="module-proveedores" class="app-module hidden">
-        <main class="main-content full-width" style="display: flex; flex-direction: column;">
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="menu-btn active" data-prov-tab="gen"><span>Proveedor</span></button>
+                <button class="menu-btn" data-prov-tab="ban"><span>Datos Bancarios</span></button>
+                <button class="menu-btn" data-prov-tab="con"><span>Datos de Contacto</span></button>
+            </nav>
+            <div class="sidebar-history">
+                <h3 class="sidebar-heading">Gestión Comercial</h3>
+                <p style="font-size: 9pt; padding: 0 10px; color: var(--text-secondary);">Administración de proveedores, cuentas y contactos.</p>
+            </div>
+        </aside>
+
+        <main class="main-content">
             <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-shrink: 0;">
                 <div class="header-title">
-                    <h1>Directorio de Proveedores</h1>
-                    <p class="header-subtitle">Gestión interactiva de datos comerciales</p>
+                    <h1 id="prov-tab-title">Directorio de Proveedores</h1>
+                    <p class="header-subtitle" id="prov-tab-subtitle">Datos generales del proveedor</p>
                 </div>
                 <button id="btn-add-proveedor" class="btn" style="background-color: var(--primary-color); color: white;">
                     + Nuevo Proveedor
@@ -302,13 +230,15 @@
                     <table class="data-table" id="proveedores-table">
                         <thead>
                             <tr>
-                                <th class="text-left">Proveedor</th>
-                                <th class="text-left">Nombre</th>
-                                <th class="text-left">Dirección</th>
-                                <th class="text-left">Banco</th>
-                                <th class="text-left">Alias</th>
-                                <th class="text-left">CBU</th>
-                                <th class="text-center">Web</th>
+                                <th class="text-left col-prov-gen">Proveedor</th>
+                                <th class="text-left col-prov-gen">Nombre</th>
+                                <th class="text-left col-prov-gen">Dirección</th>
+                                <th class="text-left col-prov-ban hidden">Banco</th>
+                                <th class="text-left col-prov-ban hidden">Alias</th>
+                                <th class="text-left col-prov-ban hidden">CBU</th>
+                                <th class="text-left col-prov-con hidden">Teléfono</th>
+                                <th class="text-left col-prov-con hidden">Mail</th>
+                                <th class="text-center col-prov-con hidden">Web</th>
                                 <th class="text-center sticky-col">Acciones</th>
                             </tr>
                         </thead>
@@ -322,61 +252,29 @@
     <div id="module-sueldos" class="app-module hidden">
         <aside class="sidebar">
             <nav class="sidebar-menu">
-                <button class="menu-btn active" data-tab="registro-sueldos">
-                    <svg class="menu-svg" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M23.44 9.17L18.42 14.19L15.6 11.37L17.02 9.96L18.42 11.36L22.03 7.75L23.44 9.17Z" />
-                    </svg>
-                    <span>Registro de Sueldos</span>
-                </button>
+                <button class="menu-btn active" data-tab="registro-sueldos"><span>Registro de Sueldos</span></button>
             </nav>
-            <div class="sidebar-history">
-                <h3 class="sidebar-heading">Gestión de RRHH</h3>
-                <p style="font-size: 9pt; padding: 0 10px; color: var(--text-secondary);">
-                    Administración de honorarios, adelantos y control de asistencias.
-                </p>
-            </div>
-            <div class="sidebar-footer"><p>Módulo RRHH v1.0</p></div>
+            <div class="sidebar-history"><h3 class="sidebar-heading">Gestión de RRHH</h3></div>
         </aside>
-
         <main class="main-content">
-            <header class="main-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
-                <div class="header-title">
-                    <h1 id="sueldos-tab-title">Liquidación de Sueldos</h1>
-                    <p class="header-subtitle">Visualización y edición mensual de trabajadores</p>
-                </div>
+            <header class="main-header" style="padding-bottom: 15px;">
+                <div class="header-title"><h1>Liquidación de Sueldos</h1></div>
             </header>
-
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
                 <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
                     <div class="card selector-card" style="margin-bottom: 20px;">
                         <div class="selector-group">
                             <div class="control-field">
                                 <label for="sueldos-month">Mes a liquidar</label>
-                                <select id="sueldos-month" class="form-control">
-                                    <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
-                                    <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-                                    <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
-                                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                                </select>
+                                <select id="sueldos-month" class="form-control"><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
                             </div>
                             <div class="control-field">
                                 <label for="sueldos-year">Año</label>
-                                <select id="sueldos-year" class="form-control">
-                                    <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option>
-                                    <option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option>
-                                    <option value="2033">2033</option><option value="2034">2034</option><option value="2035">2035</option>
-                                    <option value="2036">2036</option><option value="2037">2037</option><option value="2038">2038</option>
-                                    <option value="2039">2039</option><option value="2040">2040</option>
-                                </select>
+                                <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
                             </div>
                         </div>
                     </div>
-
-                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">
-                        No existen registros de sueldos para este período.
-                    </div>
-
+                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros.</div>
                     <div class="card" id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
                             <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
@@ -387,19 +285,14 @@
                                 <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
                             </div>
                         </div>
-
                         <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding: 0 20px 20px 20px;">
-                            <table class="data-table" id="sueldos-table">
-                                <thead id="sueldos-thead"></thead>
-                                <tbody id="sueldos-tbody"></tbody>
-                            </table>
+                            <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
                         </div>
                     </div>
                 </section>
             </div>
         </main>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
