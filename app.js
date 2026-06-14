@@ -16,9 +16,9 @@ const LOADER_PHASES = [
 let appState = {
     balances: null, carpetas: {}, proveedores: [], sueldos: {}, 
     selectedMonth: "", selectedYear: "",
-    historyMonth: "ALL", historyYear: "ALL",
-    sueldosMonth: "", sueldosYear: "", sueldosEditMode: false,
-    proveedoresEditMode: false,
+    historyMonth: "", historyYear: "",
+    sueldosMonth: "", sueldosYear: "", 
+    sueldosEditMode: false, proveedoresEditMode: false, historialEditMode: false,
     currentHistorySheet: null, currentHistoryType: null,
     currentUpload: null, activeProvRowIndex: null, activeProvTab: "gen"
 };
@@ -44,12 +44,21 @@ function initTheme() {
 
 function formatDateToAR(dateStr) {
     if (!dateStr || dateStr === "-") return "";
-    const str = dateStr.toString();
+    const str = dateStr.toString().trim();
     if (str.includes("T") && str.includes("-")) {
         const parts = str.split("T")[0].split("-");
         if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
     return str.split(" ")[0];
+}
+
+function getValDate(selector, tr) {
+    const el = tr.querySelector(selector);
+    if (!el) return "";
+    const raw = el.getAttribute('data-raw');
+    // Si el usuario no modificó el texto visible, enviamos el dato original intacto (Anti-Corrupción de Fechas)
+    if (el.value === formatDateToAR(raw)) return raw;
+    return el.value;
 }
 
 function parseMonto(val) {
@@ -85,9 +94,13 @@ function initNavModules() {
 
 function initSelectors() {
     const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear());
-    appState.selectedMonth = m; appState.selectedYear = y; appState.sueldosMonth = m; appState.sueldosYear = y;
+    appState.selectedMonth = m; appState.selectedYear = y; 
+    appState.sueldosMonth = m; appState.sueldosYear = y;
+    appState.historyMonth = m; appState.historyYear = y;
+    
     document.getElementById("select-month").value = m; document.getElementById("select-year").value = y;
     document.getElementById("sueldos-month").value = m; document.getElementById("sueldos-year").value = y;
+    document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y;
 }
 
 function initTabs() {
@@ -104,7 +117,7 @@ function initTabs() {
 }
 
 // -------------------------------------------------------------
-// INTEGRADOR AUTOMÁTICO DE SUELDOS
+// INTEGRADOR AUTOMÁTICO DE SUELDOS A BALANCES
 // -------------------------------------------------------------
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
@@ -117,7 +130,8 @@ function injectSueldosIntoBalances() {
             
             for (let m = 0; m < 12; m++) {
                 const offset = m * 14;
-                const nombre = rData[offset];
+                // Si el mes no tiene nombre escrito, buscamos en la Columna A (offset 0)
+                const nombre = rData[offset] || rData[0];
                 if (!nombre || nombre === "-") continue;
 
                 const monthStr = String(m + 1).padStart(2, '0');
@@ -215,7 +229,19 @@ function setupEventListeners() {
         sendGlobalPostRequest("UPDATE_FOLDERS", payload);
     };
 
-    // Proveedores
+    // Historial Balances (Nuevo Modo Global)
+    document.getElementById("btn-historial-edit-mode").onclick = () => toggleHistorialEditMode(true);
+    document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
+    document.getElementById("btn-historial-save").onclick = () => saveHistorial();
+    document.getElementById("btn-historial-add").onclick = () => {
+        if (!appState.historialEditMode) toggleHistorialEditMode(true);
+        const tb = document.getElementById("historial-tbody");
+        document.getElementById("historial-table").classList.remove("hidden");
+        document.getElementById("historial-empty").classList.add("hidden");
+        tb.insertBefore(createBalanceRowHTML({ rowIndex: null, fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }), tb.firstChild);
+    };
+
+    // Proveedores 
     document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
@@ -235,22 +261,16 @@ function setupEventListeners() {
         renderProveedores();
     };
 
-    // Sueldos con detector de Nuevo Año (TRANSICIÓN AUTOMÁTICA)
+    // Sueldos
     document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); };
     document.getElementById("sueldos-year").onchange = (e) => { 
         const newYear = e.target.value;
         appState.sueldosYear = newYear; 
-        
-        // Si el año seleccionado no existe en el objeto sueldos
         if (!appState.sueldos[newYear]) {
             if (confirm(`El año ${newYear} no tiene registros de RRHH.\n\n¿Desea inicializar este año automáticamente copiando a los trabajadores que estuvieron activos en Diciembre de ${newYear - 1}?`)) {
                 sendGlobalPostRequest("SUELDO_INIT_YEAR", { year: newYear });
-            } else {
-                renderSueldos();
-            }
-        } else {
-            renderSueldos(); 
-        }
+            } else { renderSueldos(); }
+        } else { renderSueldos(); }
     };
     
     document.getElementById("btn-sueldos-edit-mode").onclick = () => toggleSueldosEditMode(true);
@@ -302,7 +322,7 @@ function fetchFinancialData() {
 }
 
 // ==========================================
-// MÓDULO: BALANCES 
+// MÓDULO: BALANCES E HISTORIAL MUNDIAL
 // ==========================================
 function renderBalance() {
     if (!appState.balances) return;
@@ -337,6 +357,15 @@ function renderAnnualSummary() {
     const nb = ti - tg; document.getElementById("annual-balance").textContent = formatFinalBalance(nb); document.getElementById("annual-balance").className = `text-right font-weight-bold ${nb >= 0 ? 'text-success' : 'text-danger'}`;
 }
 
+function toggleHistorialEditMode(isEdit) {
+    appState.historialEditMode = isEdit;
+    document.getElementById("btn-historial-edit-mode").classList.toggle("hidden", isEdit);
+    document.getElementById("btn-historial-save").classList.toggle("hidden", !isEdit);
+    document.getElementById("btn-historial-cancel").classList.toggle("hidden", !isEdit);
+    document.getElementById("btn-historial-add").classList.toggle("hidden", !isEdit);
+    renderHistoryTable();
+}
+
 function openHistoryView(s, t, b) {
     if (!appState.balances) return;
     document.querySelectorAll(".menu-btn, .history-btn").forEach(btn => btn.classList.remove("active")); b.classList.add("active");
@@ -344,12 +373,21 @@ function openHistoryView(s, t, b) {
     document.getElementById("tab-subtitle").textContent = s; document.getElementById("historial-title").textContent = `Registros: ${s}`;
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
-    document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL"; appState.historyMonth = "ALL"; appState.historyYear = "ALL";
     
+    // Predeterminado: Mes en curso
+    const m = appState.selectedMonth; const y = appState.selectedYear;
+    document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y; 
+    appState.historyMonth = m; appState.historyYear = y;
+    
+    appState.historialEditMode = false;
+    document.getElementById("btn-historial-save").classList.add("hidden");
+    document.getElementById("btn-historial-cancel").classList.add("hidden");
+    document.getElementById("btn-historial-add").classList.add("hidden");
+
     const theadTr = document.getElementById("historial-thead-tr");
     
     if (s === "Liquidación de Sueldos") {
-        document.getElementById("btn-add-balance").classList.add("hidden");
+        document.getElementById("btn-historial-edit-mode").classList.add("hidden"); // Sueldos no se editan desde acá
         document.getElementById("carpetas-config-section").classList.add("hidden");
         theadTr.innerHTML = `
             <th class="text-left">Nombre</th>
@@ -360,41 +398,41 @@ function openHistoryView(s, t, b) {
             <th class="text-right">Precio/Hora</th>
             <th class="text-center">Horas</th>`;
     } else {
-        document.getElementById("btn-add-balance").classList.remove("hidden");
-        document.getElementById("btn-add-balance").onclick = () => addBalanceEmptyRow(s, t);
+        document.getElementById("btn-historial-edit-mode").classList.remove("hidden");
         renderCarpetasSection(s); 
+        let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`;
         theadTr.innerHTML = `
             <th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th>
             <th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th>
-            <th class="text-left">IVA Cont.</th><th class="text-center">Comprobante C.</th><th class="text-center">Comprobante P.</th>
-            <th class="text-center sticky-col" id="col-acciones-historial">Acciones</th>`;
+            <th class="text-left">IVA Cont.</th>${extraCol}`;
     }
     
     renderHistoryTable();
-}
-
-function renderCarpetasSection(s) {
-    document.getElementById("carpetas-config-section").classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
-    document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-";
-    document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago;
-    document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden"));
-    document.getElementById("btn-edit-carpetas").classList.remove("hidden"); document.getElementById("btn-save-carpetas").classList.add("hidden"); document.getElementById("btn-cancel-carpetas").classList.add("hidden");
 }
 
 function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
     const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
 
-    const colAcciones = document.getElementById("col-acciones-historial");
-    if(colAcciones) colAcciones.classList.toggle("hidden", s === "Liquidación de Sueldos");
+    // Ajustar cabeceras en edición
+    if (s !== "Liquidación de Sueldos") {
+        const theadTr = document.getElementById("historial-thead-tr");
+        let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`;
+        theadTr.innerHTML = `
+            <th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th>
+            <th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th>
+            <th class="text-left">IVA Cont.</th>${extraCol}`;
+    }
 
-    for (const p in tm) { const [y, m] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== m) continue; if (tm[p]) fm = fm.concat(tm[p]); }
+    for (const p in tm) { const [y, month] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; if (tm[p]) fm = fm.concat(tm[p]); }
     if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
-    else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m, false, s, t)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); }
+    else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); }
 }
 
-function createBalanceRowHTML(m, edit, s, t) {
+function createBalanceRowHTML(m) {
+    const s = appState.currentHistorySheet; const t = appState.currentHistoryType;
     const tr = document.createElement("tr");
+    tr.setAttribute("data-row-index", m.rowIndex || "NEW");
     
     if (m.isVirtual) {
         tr.innerHTML = `
@@ -408,20 +446,82 @@ function createBalanceRowHTML(m, edit, s, t) {
         return tr;
     }
 
-    if (edit) { 
-        tr.innerHTML = `<td><input type="text" class="edit-input i-fec" value="${m.fecha||''}" placeholder="DD/MM/AAAA"></td><td><input type="text" class="edit-input i-det" value="${m.detalle||''}"></td><td><input type="number" step="0.01" class="edit-input i-mon" value="${m.monto||''}"></td><td><input type="text" class="edit-input i-ope" value="${m.operacion||''}" placeholder="Operación"></td><td><input type="text" class="edit-input i-i21" value="${m.iva21||''}"></td><td><input type="text" class="edit-input i-i105" value="${m.iva105||''}"></td><td><input type="text" class="edit-input i-icon" value="${m.ivaCont||''}"></td><td class="text-center">-</td><td class="text-center">-</td><td class="action-buttons sticky-col"><button class="action-btn btn-save" onclick="saveBalance(this, ${m.rowIndex||'null'}, '${s}', '${t}')">Guardar</button><button class="action-btn btn-cancel" onclick="renderHistoryTable()">Cancelar</button></td>`; 
+    if (appState.historialEditMode) { 
+        tr.innerHTML = `
+            <td><input type="text" class="edit-input i-fec" data-raw="${m.fecha||''}" value="${formatDateToAR(m.fecha)}" placeholder="DD/MM/AAAA"></td>
+            <td><input type="text" class="edit-input i-det" value="${m.detalle||''}"></td>
+            <td><input type="number" step="0.01" class="edit-input i-mon" value="${Math.abs(m.monto)||''}"></td>
+            <td><input type="text" class="edit-input i-ope" value="${m.operacion||''}" placeholder="Operación"></td>
+            <td><input type="text" class="edit-input i-i21" value="${m.iva21||''}"></td>
+            <td><input type="text" class="edit-input i-i105" value="${m.iva105||''}"></td>
+            <td><input type="text" class="edit-input i-icon" value="${m.ivaCont||''}"></td>
+            <td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="deleteBalanceUI(this, ${m.rowIndex||'null'})">Borrar</button></td>`; 
     } else {
         const compHTML_C = m.idComprobanteCompra ? `<a href="https://drive.google.com/file/d/${m.idComprobanteCompra}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'compra', '${t}')">Subir</button>`;
         const compHTML_P = m.idComprobantePago ? `<a href="https://drive.google.com/file/d/${m.idComprobantePago}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'pago', '${t}')">Subir</button>`;
-        tr.innerHTML = `<td>${m.fecha||'-'}</td><td>${m.detalle||'-'}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(t==='gastos'?Math.abs(m.monto):m.monto)}</td><td>${m.operacion||'-'}</td><td>${m.iva21||'-'}</td><td>${m.iva105||'-'}</td><td>${m.ivaCont||'-'}</td><td class="text-center">${compHTML_C}</td><td class="text-center">${compHTML_P}</td><td class="action-buttons sticky-col"><button class="action-btn btn-edit" onclick="editBalance(${m.rowIndex}, '${s}', '${t}')">Editar</button><button class="action-btn btn-delete" onclick="deleteBalance(${m.rowIndex}, '${s}')">Borrar</button></td>`;
+        tr.innerHTML = `
+            <td>${formatDateToAR(m.fecha)||'-'}</td><td>${m.detalle||'-'}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(t==='gastos'?Math.abs(m.monto):m.monto)}</td>
+            <td>${m.operacion||'-'}</td><td>${m.iva21||'-'}</td><td>${m.iva105||'-'}</td><td>${m.ivaCont||'-'}</td>
+            <td class="text-center">${compHTML_C}</td><td class="text-center">${compHTML_P}</td>`;
     } 
     return tr;
 }
-function addBalanceEmptyRow(s, t) { const tb = document.getElementById("historial-tbody"); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); tb.insertBefore(createBalanceRowHTML({ fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }, true, s, t), tb.firstChild); }
-window.editBalance = function(ri, s, t) { let tm; const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) tm = m; } if (!tm) return; const tb = document.getElementById("historial-tbody"); const r = Array.from(tb.querySelectorAll("tr")); const idx = r.findIndex(x => x.querySelector(`button[onclick*="${ri}"]`)); if (idx > -1) tb.replaceChild(createBalanceRowHTML(tm, true, s, t), r[idx]); };
-window.saveBalance = function(b, ri, s, t) { const tr = b.closest("tr"); let rm = tr.querySelector(".i-mon").value; if (t === 'gastos' && rm > 0) rm = -rm; let cc = "", cp = ""; if (ri) { const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } } const py = { rowIndex: ri, sheetName: s, fecha: tr.querySelector(".i-fec").value, detalle: tr.querySelector(".i-det").value, monto: rm, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idComprobanteCompra: cc, idComprobantePago: cp }; sendGlobalPostRequest(ri ? "BAL_EDIT" : "BAL_ADD", py); };
-window.deleteBalance = function(ri, s) { if (confirm("¿Eliminar permanente?")) sendGlobalPostRequest("BAL_DELETE", { rowIndex: ri, sheetName: s }); };
+
+window.deleteBalanceUI = function(btn, rowIndex) {
+    if (!rowIndex || rowIndex === 'null') {
+        btn.closest("tr").remove();
+    } else {
+        if(confirm("¿Eliminar operación permanentemente?")) {
+            sendGlobalPostRequest("BAL_DELETE", { rowIndex: rowIndex, sheetName: appState.currentHistorySheet });
+        }
+    }
+};
+
+async function saveHistorial() {
+    const s = appState.currentHistorySheet; const t = appState.currentHistoryType;
+    const tbody = document.getElementById("historial-tbody");
+    const rows = tbody.querySelectorAll("tr");
+    toggleLoader(true, "Guardando registros...");
+    try {
+        for (let tr of rows) {
+            let rowIndex = tr.getAttribute("data-row-index");
+            if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex);
+            
+            let rm = parseMonto(tr.querySelector(".i-mon").value);
+            if (t === 'gastos' && rm > 0) rm = -rm; 
+            
+            let cc = "", cp = ""; 
+            if (rowIndex) { 
+                const p = appState.balances[t][s]; 
+                for (let d in p) { let m = p[d].find(x => x.rowIndex === rowIndex); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } 
+            } 
+            
+            const payload = { 
+                rowIndex: rowIndex, sheetName: s, 
+                fecha: getValDate('.i-fec', tr), 
+                detalle: tr.querySelector(".i-det").value, 
+                monto: rm, operacion: tr.querySelector(".i-ope").value, 
+                iva21: tr.querySelector(".i-i21").value, 
+                iva105: tr.querySelector(".i-i105").value, 
+                ivaCont: tr.querySelector(".i-icon").value, 
+                idComprobanteCompra: cc, idComprobantePago: cp 
+            }; 
+            await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: rowIndex ? "BAL_EDIT" : "BAL_ADD", data: payload }) });
+        }
+        toggleHistorialEditMode(false);
+        fetchFinancialData();
+    } catch { toggleLoader(false); }
+}
+
 window.triggerUpload = function(s, ri, ty, c) { appState.currentUpload = { sheetName: s, rowIndex: ri, type: ty, categoryType: c }; document.getElementById("global-file-input").click(); };
+
+function renderCarpetasSection(s) {
+    document.getElementById("carpetas-config-section").classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
+    document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-";
+    document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago;
+    document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden"));
+    document.getElementById("btn-edit-carpetas").classList.remove("hidden"); document.getElementById("btn-save-carpetas").classList.add("hidden"); document.getElementById("btn-cancel-carpetas").classList.add("hidden");
+}
 
 // ==========================================
 // MÓDULO: PROVEEDORES
@@ -510,6 +610,32 @@ window.deleteProveedorUI = function(btn, rowIndex) {
     }
 };
 
+window.openWebModal = function(rowIndex) { 
+    appState.activeProvRowIndex = rowIndex; 
+    const prov = appState.proveedores.find(p => p.rowIndex === rowIndex); 
+    if(!prov) return;
+    document.getElementById('modal-prov-name').textContent = prov.nombre || prov.proveedor || "Proveedor"; 
+    document.getElementById('web-view-mode').classList.remove('hidden'); 
+    document.getElementById('web-edit-mode').classList.add('hidden'); 
+    document.getElementById('btn-modal-edit').classList.remove('hidden'); 
+    document.getElementById('btn-modal-save').classList.add('hidden'); 
+    document.getElementById('btn-modal-cancel').classList.add('hidden'); 
+    
+    const link = document.getElementById('modal-web-link'); 
+    const noWeb = document.getElementById('modal-no-web'); 
+    if(prov.web && prov.web.trim() !== "") { 
+        link.href = prov.web.startsWith('http') ? prov.web : 'https://' + prov.web; 
+        link.classList.remove('hidden'); 
+        noWeb.classList.add('hidden'); 
+        document.getElementById('modal-web-input').value = prov.web; 
+    } else { 
+        link.classList.add('hidden'); 
+        noWeb.classList.remove('hidden'); 
+        document.getElementById('modal-web-input').value = ""; 
+    } 
+    document.getElementById('web-modal').classList.remove('hidden'); 
+};
+
 async function saveProveedores() {
     const tbody = document.getElementById("proveedores-tbody");
     const rows = tbody.querySelectorAll("tr");
@@ -581,8 +707,8 @@ function renderSueldos() {
     }
     
     activeWorkers.sort((a, b) => { 
-        const nameA = (a.rowData[offset] || "").toString().toLowerCase(); 
-        const nameB = (b.rowData[offset] || "").toString().toLowerCase(); 
+        const nameA = (a.rowData[offset] || a.rowData[0] || "").toString().toLowerCase(); 
+        const nameB = (b.rowData[offset] || b.rowData[0] || "").toString().toLowerCase(); 
         return nameA.localeCompare(nameB); 
     });
     
@@ -619,14 +745,14 @@ function renderSueldos() {
         
         if (appState.sueldosEditMode) {
             let rowHtml = `
-                <td><input type="text" class="edit-input s-nom" value="${rData[offset] || ''}"></td>
+                <td><input type="text" class="edit-input s-nom" value="${rData[offset] || rData[0] || ''}"></td>
                 <td><input type="number" step="0.01" class="edit-input s-sue" value="${parseMonto(rData[offset+13]) || ''}"></td>
-                <td><input type="text" class="edit-input s-fp" value="${formatDateToAR(rData[offset+12])}" placeholder="DD/MM/AAAA"></td>
+                <td><input type="text" class="edit-input s-fp" data-raw="${rData[offset+12] || ''}" value="${formatDateToAR(rData[offset+12])}" placeholder="DD/MM/AAAA"></td>
                 <td><input type="text" class="edit-input s-mes" value="${rData[offset+1] || MESES_NOMBRES[month]}"></td>`;
                 
-            if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${parseMonto(rData[offset+4]) || ''}"></td><td><input type="text" class="edit-input s-fa1" value="${formatDateToAR(rData[offset+5])}" placeholder="DD/MM/AAAA"></td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${parseMonto(rData[offset+6]) || ''}"></td><td><input type="text" class="edit-input s-fa2" value="${formatDateToAR(rData[offset+7])}" placeholder="DD/MM/AAAA"></td>`;
-            if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${parseMonto(rData[offset+8]) || ''}"></td><td><input type="text" class="edit-input s-fa3" value="${formatDateToAR(rData[offset+9])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos >= 1) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a1" value="${parseMonto(rData[offset+4]) || ''}"></td><td><input type="text" class="edit-input s-fa1" data-raw="${rData[offset+5] || ''}" value="${formatDateToAR(rData[offset+5])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos >= 2) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a2" value="${parseMonto(rData[offset+6]) || ''}"></td><td><input type="text" class="edit-input s-fa2" data-raw="${rData[offset+7] || ''}" value="${formatDateToAR(rData[offset+7])}" placeholder="DD/MM/AAAA"></td>`;
+            if (maxAdelantos === 3) rowHtml += `<td><input type="number" step="0.01" class="edit-input s-a3" value="${parseMonto(rData[offset+8]) || ''}"></td><td><input type="text" class="edit-input s-fa3" data-raw="${rData[offset+9] || ''}" value="${formatDateToAR(rData[offset+9])}" placeholder="DD/MM/AAAA"></td>`;
             
             rowHtml += `
                 <td>
@@ -646,7 +772,7 @@ function renderSueldos() {
             if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
             
             let rowHtml = `
-                <td class="text-left" style="font-weight:600;">${rData[offset] || '-'}</td>
+                <td class="text-left" style="font-weight:600;">${rData[offset] || rData[0] || '-'}</td>
                 <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(parseMonto(rData[offset+13]))}</td>
                 <td class="text-left">${formatDateToAR(rData[offset+12]) || '-'}</td>
                 <td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td>`;
@@ -678,8 +804,26 @@ async function saveSueldos() {
             let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
             let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill("-"); 
             const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; 
-            finalRowData[offset] = getVal('.s-nom'); finalRowData[offset+1] = getVal('.s-mes'); finalRowData[offset+2] = getVal('.s-hor'); finalRowData[offset+3] = getVal('.s-ph'); finalRowData[offset+4] = getVal('.s-a1') || finalRowData[offset+4]; finalRowData[offset+5] = getVal('.s-fa1') || finalRowData[offset+5]; finalRowData[offset+6] = getVal('.s-a2') || finalRowData[offset+6]; finalRowData[offset+7] = getVal('.s-fa2') || finalRowData[offset+7]; finalRowData[offset+8] = getVal('.s-a3') || finalRowData[offset+8]; finalRowData[offset+9] = getVal('.s-fa3') || finalRowData[offset+9]; finalRowData[offset+10] = getVal('.s-me'); finalRowData[offset+11] = getVal('.s-mt'); finalRowData[offset+12] = getVal('.s-fp'); finalRowData[offset+13] = getVal('.s-sue'); 
-            const nombre = finalRowData[offset]; for (let m = 0; m < 12; m++) finalRowData[m * 14] = nombre; 
+            
+            const nombre = getVal('.s-nom');
+            // Repite el nombre a lo largo de todos los meses de la fila para que nunca se pierda
+            for (let m = 0; m < 12; m++) finalRowData[m * 14] = nombre; 
+            
+            finalRowData[offset] = nombre; 
+            finalRowData[offset+1] = getVal('.s-mes'); 
+            finalRowData[offset+2] = getVal('.s-hor'); 
+            finalRowData[offset+3] = getVal('.s-ph'); 
+            finalRowData[offset+4] = getVal('.s-a1') || finalRowData[offset+4]; 
+            finalRowData[offset+5] = getValDate('.s-fa1', tr) || finalRowData[offset+5]; 
+            finalRowData[offset+6] = getVal('.s-a2') || finalRowData[offset+6]; 
+            finalRowData[offset+7] = getValDate('.s-fa2', tr) || finalRowData[offset+7]; 
+            finalRowData[offset+8] = getVal('.s-a3') || finalRowData[offset+8]; 
+            finalRowData[offset+9] = getValDate('.s-fa3', tr) || finalRowData[offset+9]; 
+            finalRowData[offset+10] = getVal('.s-me'); 
+            finalRowData[offset+11] = getVal('.s-mt'); 
+            finalRowData[offset+12] = getValDate('.s-fp', tr) || finalRowData[offset+12]; 
+            finalRowData[offset+13] = getVal('.s-sue'); 
+            
             await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: finalRowData } }) }); 
         } 
         toggleSueldosEditMode(false); fetchFinancialData(); 
