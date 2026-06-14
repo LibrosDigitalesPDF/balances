@@ -93,7 +93,7 @@
                 </div>
 
             </div>
-            <div class="sidebar-footer"><p>Módulo Balances v6.0</p></div>
+            <div class="sidebar-footer"><p>Módulo Balances v7.0</p></div>
         </aside>
 
         <main class="main-content">
@@ -235,10 +235,8 @@
                                         <th class="text-left">IVA 21%</th>
                                         <th class="text-left">IVA 10.5%</th>
                                         <th class="text-left">IVA Cont.</th>
-                                        <th class="text-left">ID Carpeta C.</th>
-                                        <th class="text-left">ID Carpeta V.</th>
                                         <th class="text-center">Comprobante C.</th>
-                                        <th class="text-center">Comprobante V.</th>
+                                        <th class="text-center">Comprobante P.</th>
                                         <th class="text-center sticky-col">Acciones</th>
                                     </tr>
                                 </thead>
@@ -246,10 +244,40 @@
                             </table>
                         </div>
 
-                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 24px;">
+                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-bottom: 15px;">
                             <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span>
                             <span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
                         </div>
+
+                        <div id="carpetas-config-section" class="card hidden" style="flex-shrink: 0; margin-bottom: 24px; border: 1px dashed var(--primary-color); background-color: rgba(59, 130, 246, 0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                                <h3 class="section-title text-left" style="margin: 0; font-size: 11.5pt;">Carpetas de Drive enlazadas</h3>
+                                <div class="action-buttons">
+                                    <button id="btn-edit-carpetas" class="action-btn btn-edit">Editar IDs</button>
+                                    <button id="btn-save-carpetas" class="action-btn btn-save hidden">Guardar</button>
+                                    <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden">Cancelar</button>
+                                </div>
+                            </div>
+                            
+                            <div class="selector-group" style="gap: 15px;">
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Cuenta</label>
+                                    <div id="view-id-cuenta" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID de la carpeta principal">-</div>
+                                    <input type="text" id="edit-id-cuenta" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Compra</label>
+                                    <div id="view-id-compra" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de compras">-</div>
+                                    <input type="text" id="edit-id-compra" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                                <div class="control-field" style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 8.5pt;">ID Carpeta Pago (Venta)</label>
+                                    <div id="view-id-pago" class="form-control" style="font-size: 9pt; background: var(--hover-bg); border: 1px dashed var(--border-color); user-select: all; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="ID subcarpeta de pagos/ventas">-</div>
+                                    <input type="text" id="edit-id-pago" class="edit-input hidden" style="padding: 10px 14px;" placeholder="Pegar ID aquí">
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="historial-empty" class="alert hidden" style="text-align:center;">No hay registros para este período.</div>
                     </div>
                 </section>
