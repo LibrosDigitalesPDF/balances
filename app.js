@@ -42,17 +42,39 @@ function initTheme() {
     });
 }
 
+// Convertidor robusto de Fechas a formato Argentino (DD/MM/AAAA)
 function formatDateToAR(dateStr) {
     if (!dateStr || dateStr === "-") return "";
     const str = dateStr.toString();
-    if (str.includes("T")) {
+    if (str.includes("T") && str.includes("-")) {
         const parts = str.split("T")[0].split("-");
         if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
-    return str;
+    return str.split(" ")[0];
 }
 
-// ... (Resto de funciones de inicialización)
+// Convertidor robusto de Monedas (Interpreta puntos, comas y signos de cualquier formato)
+function parseMonto(val) {
+    if (val === "" || val === null || val === undefined || val === "-") return 0;
+    if (typeof val === 'number') return val;
+    let str = val.toString().trim();
+    
+    str = str.replace(/[^0-9.,-]/g, ''); // Limpia letras o signos $
+    
+    if (str.includes(',') && str.includes('.')) {
+        const lastComma = str.lastIndexOf(',');
+        const lastDot = str.lastIndexOf('.');
+        if (lastComma > lastDot) { str = str.replace(/\./g, '').replace(',', '.'); } // 1.500,50
+        else { str = str.replace(/,/g, ''); } // 1,500.50
+    } 
+    else if (str.includes(',')) { str = str.replace(',', '.'); } 
+    else if (str.includes('.')) {
+        const parts = str.split('.');
+        if (parts[parts.length - 1].length > 2) { str = str.replace(/\./g, ''); }
+    }
+    return Number(str) || 0;
+}
+
 function initNavModules() {
     document.querySelectorAll(".top-nav-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -96,38 +118,53 @@ function injectSueldosIntoBalances() {
     Object.keys(appState.sueldos).forEach(year => {
         appState.sueldos[year].forEach(worker => {
             const rData = worker.rowData;
+            
             for (let m = 0; m < 12; m++) {
                 const offset = m * 14;
                 const nombre = rData[offset];
-                const fechaPagoRaw = rData[offset + 12];
-                const sueldoRaw = rData[offset + 13];
-                const sueldoNumber = Number(sueldoRaw);
+                if (!nombre || nombre === "-") continue;
 
-                if (nombre && nombre !== "-" && !isNaN(sueldoNumber) && sueldoNumber > 0) {
-                    const monthStr = String(m + 1).padStart(2, '0');
-                    const periodKey = `${year}-${monthStr}`;
-                    
-                    const fechaLimpia = formatDateToAR(fechaPagoRaw) || `01/${monthStr}/${year}`;
-                    
-                    let methodStr = "-";
-                    const valE = Number(rData[offset+10]); const valT = Number(rData[offset+11]);
-                    if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf.";
-                    else if (valE > 0) methodStr = "Efectivo"; else if (valT > 0) methodStr = "Transferencia";
+                const monthStr = String(m + 1).padStart(2, '0');
+                const periodKey = `${year}-${monthStr}`;
+                
+                let methodStr = "-"; 
+                const valE = parseMonto(rData[offset+10]); 
+                const valT = parseMonto(rData[offset+11]);
+                if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf.";
+                else if (valE > 0) methodStr = "Efectivo"; 
+                else if (valT > 0) methodStr = "Transferencia";
 
-                    if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
-                    gastosSueldos[periodKey].push({
-                        rowIndex: null, 
-                        fecha: fechaLimpia,
-                        detalle: nombre, // Guardamos el nombre limpio para mostrarlo
-                        monto: sueldoNumber,
-                        mes: MESES_NOMBRES[m],
-                        metodoPago: methodStr,
-                        precioHora: rData[offset+3] || "-",
-                        horas: rData[offset+2] || "-",
-                        operacion: "Liquidación RRHH",
-                        isVirtual: true 
-                    });
-                }
+                // Procesamos TODOS los pagos (Adelantos + Sueldo) como entidades separadas
+                const pagos = [
+                    { tipo: "Adelanto 1", montoIdx: 4, fechaIdx: 5 },
+                    { tipo: "Adelanto 2", montoIdx: 6, fechaIdx: 7 },
+                    { tipo: "Adelanto 3", montoIdx: 8, fechaIdx: 9 },
+                    { tipo: "Sueldo Final", montoIdx: 13, fechaIdx: 12 }
+                ];
+
+                pagos.forEach(pago => {
+                    const monto = parseMonto(rData[offset + pago.montoIdx]);
+                    const fechaRaw = rData[offset + pago.fechaIdx];
+
+                    if (monto > 0) {
+                        if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
+                        
+                        const fechaLimpia = formatDateToAR(fechaRaw) || `01/${monthStr}/${year}`;
+                        
+                        gastosSueldos[periodKey].push({
+                            rowIndex: null, 
+                            fecha: fechaLimpia,
+                            detalle: `${pago.tipo} - ${nombre}`, // Ej: "Adelanto 1 - Juan" o "Sueldo Final - Juan"
+                            monto: monto,
+                            mes: MESES_NOMBRES[m],
+                            metodoPago: methodStr,
+                            precioHora: rData[offset+3] || "-",
+                            horas: rData[offset+2] || "-",
+                            operacion: "Liquidación RRHH",
+                            isVirtual: true 
+                        });
+                    }
+                });
             }
         });
     });
@@ -231,7 +268,9 @@ function fetchFinancialData() {
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
+            
             injectSueldosIntoBalances();
+            
             populateSidebarHistory(); renderBalance(); renderProveedores();
             if (document.getElementById("module-sueldos").classList.contains("active")) renderSueldos();
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
@@ -288,7 +327,6 @@ function openHistoryView(s, t, b) {
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL"; appState.historyMonth = "ALL"; appState.historyYear = "ALL";
     
-    // TRANSICIÓN DINÁMICA DE CABECERAS
     const theadTr = document.getElementById("historial-thead-tr");
     
     if (s === "Liquidación de Sueldos") {
@@ -296,7 +334,7 @@ function openHistoryView(s, t, b) {
         document.getElementById("carpetas-config-section").classList.add("hidden");
         theadTr.innerHTML = `
             <th class="text-left">Nombre</th>
-            <th class="text-right">Sueldo</th>
+            <th class="text-right">Monto</th>
             <th class="text-left">Fecha de Pago</th>
             <th class="text-left">Mes</th>
             <th class="text-left">Método Pago</th>
@@ -316,9 +354,20 @@ function openHistoryView(s, t, b) {
     renderHistoryTable();
 }
 
+function renderCarpetasSection(s) {
+    document.getElementById("carpetas-config-section").classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
+    document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-";
+    document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago;
+    document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden"));
+    document.getElementById("btn-edit-carpetas").classList.remove("hidden"); document.getElementById("btn-save-carpetas").classList.add("hidden"); document.getElementById("btn-cancel-carpetas").classList.add("hidden");
+}
+
 function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
     const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
+
+    const colAcciones = document.getElementById("col-acciones-historial");
+    if(colAcciones) colAcciones.classList.toggle("hidden", s === "Liquidación de Sueldos");
 
     for (const p in tm) { const [y, m] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== m) continue; if (tm[p]) fm = fm.concat(tm[p]); }
     if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
@@ -349,6 +398,7 @@ function createBalanceRowHTML(m, edit, s, t) {
     } 
     return tr;
 }
+
 function addBalanceEmptyRow(s, t) { const tb = document.getElementById("historial-tbody"); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); tb.insertBefore(createBalanceRowHTML({ fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }, true, s, t), tb.firstChild); }
 window.editBalance = function(ri, s, t) { let tm; const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) tm = m; } if (!tm) return; const tb = document.getElementById("historial-tbody"); const r = Array.from(tb.querySelectorAll("tr")); const idx = r.findIndex(x => x.querySelector(`button[onclick*="${ri}"]`)); if (idx > -1) tb.replaceChild(createBalanceRowHTML(tm, true, s, t), r[idx]); };
 window.saveBalance = function(b, ri, s, t) { const tr = b.closest("tr"); let rm = tr.querySelector(".i-mon").value; if (t === 'gastos' && rm > 0) rm = -rm; let cc = "", cp = ""; if (ri) { const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === ri); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } } const py = { rowIndex: ri, sheetName: s, fecha: tr.querySelector(".i-fec").value, detalle: tr.querySelector(".i-det").value, monto: rm, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idComprobanteCompra: cc, idComprobantePago: cp }; sendGlobalPostRequest(ri ? "BAL_EDIT" : "BAL_ADD", py); };
@@ -356,7 +406,7 @@ window.deleteBalance = function(ri, s) { if (confirm("¿Eliminar permanente?")) 
 window.triggerUpload = function(s, ri, ty, c) { appState.currentUpload = { sheetName: s, rowIndex: ri, type: ty, categoryType: c }; document.getElementById("global-file-input").click(); };
 
 // ==========================================
-// MÓDULO: PROVEEDORES (NUEVO CONTROL GLOBAL)
+// MÓDULO: PROVEEDORES
 // ==========================================
 function toggleProveedoresEditMode(isEdit) {
     appState.proveedoresEditMode = isEdit;
@@ -475,16 +525,8 @@ async function saveProveedores() {
     } catch { toggleLoader(false); }
 }
 
-function renderCarpetasSection(s) {
-    document.getElementById("carpetas-config-section").classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
-    document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-";
-    document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago;
-    document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden"));
-    document.getElementById("btn-edit-carpetas").classList.remove("hidden"); document.getElementById("btn-save-carpetas").classList.add("hidden"); document.getElementById("btn-cancel-carpetas").classList.add("hidden");
-}
-
 // ==========================================
-// MÓDULO: SUELDOS (NUEVO ORDEN DE COLUMNAS)
+// MÓDULO: SUELDOS
 // ==========================================
 function renderSueldos() {
     const year = appState.sueldosYear; 
@@ -533,7 +575,6 @@ function renderSueldos() {
         if (w.rowData[offset + 8] !== "" && w.rowData[offset + 8] !== "-") maxAdelantos = Math.max(maxAdelantos, 3); 
     });
     
-    // CABECERA (Nombre, Sueldo, Fecha Pago, Mes...)
     let thHtml = `
         <tr>
             <th class="text-left">Nombre</th>
