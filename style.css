@@ -68,21 +68,16 @@ body {
 .modal-content { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
 /* =========================================
-   NAVEGACIÓN SUPERIOR (PESTAÑAS SOLAPADAS HORIZONTALES)
+   NAVEGACIÓN SUPERIOR
    ========================================= */
 .top-navbar {
     display: flex; justify-content: space-between; align-items: flex-end; height: 70px;
     padding: 0 24px; background-color: var(--card-bg); border-bottom: 2px solid var(--primary-color); flex-shrink: 0; z-index: 100;
 }
 .nav-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
-.nav-brand .brand-icon {
-    background-color: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 8px;
-    display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 12pt;
-}
-.nav-brand h2 { font-size: 13pt; font-weight: 700; }
+.nav-brand h2 { font-size: 13.5pt; font-weight: 700; }
 .nav-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
 
-/* Efecto de Carpeta Solapada Top */
 .nav-modules { display: flex; align-items: flex-end; gap: 0; padding-top: 15px; }
 .top-nav-btn {
     background-color: var(--hover-bg); border: 1px solid var(--border-color); border-bottom: none;
@@ -97,7 +92,7 @@ body {
 }
 
 /* =========================================
-   LAYOUT Y SIDEBAR (DISEÑO LIMPIO RESTAURADO)
+   LAYOUT Y SIDEBAR (DISEÑO LIMPIO)
    ========================================= */
 .app-module { display: none; flex-grow: 1; height: calc(100vh - 70px); overflow: hidden; }
 .app-module.active { display: flex; }
@@ -145,7 +140,7 @@ body {
 .form-control { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-primary); font-size: 11pt; font-weight: 500; outline: none; cursor: pointer; }
 
 /* =========================================
-   ACORDEÓN LINEAL LIMPIO
+   ACORDEÓN (CUENTAS DE BALANCE)
    ========================================= */
 .section-title { font-size: 13pt; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; border-left: 4px solid var(--primary-color); padding-left: 10px; }
 #ingresos-section .section-title { border-left-color: var(--success-color); }
@@ -165,15 +160,45 @@ body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0
 .accordion-content { padding: 10px 0 20px 28px; }
 
 /* =========================================
-   TABLAS 
+   TABLAS (DATA-TABLE: Sueldos, Proveedores, Historial)
    ========================================= */
 .table-responsive { width: 100%; overflow-x: auto; }
 .nowrap-table table { min-width: max-content; }
 .nowrap-table th, .nowrap-table td { white-space: nowrap; font-size: 9pt; }
-.detail-table, .data-table { width: 100%; border-collapse: collapse; font-size: 10pt; background-color: var(--card-bg); }
-.detail-table th, .data-table th, .detail-table td, .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-.detail-table th, .data-table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 8.5pt; }
-.detail-table tr:hover, .data-table tbody tr:hover { background-color: var(--hover-bg); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 10pt; background-color: var(--card-bg); }
+.data-table th, .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+.data-table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 8.5pt; }
+.data-table tbody tr:hover { background-color: var(--hover-bg); }
+
+/* =========================================
+   TABLAS INTEGRADAS (DETAIL-TABLE: SOLO PARA BALANCES MENSUALES)
+   ========================================= */
+.detail-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; background: transparent; }
+.detail-table th, .detail-table td { 
+    padding: 6px 14px; /* Menor espacio vertical para que fluyan uno debajo de otro */
+    border: none !important; /* Cero recuadros ni líneas separadoras */
+    background: transparent !important; 
+    vertical-align: middle; 
+}
+.detail-table th { 
+    color: var(--text-secondary); 
+    text-transform: uppercase; 
+    font-size: 8pt; 
+    font-weight: 600;
+    border-bottom: 1px dashed var(--border-color) !important; /* Apenas una línea base para los títulos */
+}
+/* Sin hover para que parezca texto puro */
+.detail-table tbody tr:hover { background-color: transparent !important; }
+/* Línea sutil solo arriba del total */
+.detail-table tfoot .table-total-row td { 
+    border-top: 1px solid var(--border-color) !important; 
+    font-weight: 700;
+    padding-top: 10px;
+}
+
+/* =========================================
+   ELEMENTOS DE UI RESTANTES
+   ========================================= */
 .sticky-col { position: sticky; right: 0; background-color: var(--card-bg); box-shadow: -3px 0 6px rgba(0,0,0,0.05); z-index: 2; }
 .data-table th.sticky-col { background-color: var(--table-header-bg); z-index: 3; }
 
@@ -197,7 +222,6 @@ body.dark-mode .accordion-header:hover { background-color: rgba(255, 255, 255, 0
 .balance-final-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
 .final-label { font-weight: 800; font-size: 13pt; color: var(--text-primary); }
 .final-amount { font-weight: 900; font-size: 16pt; font-variant-numeric: tabular-nums; }
-.table-total-row { font-weight: bold; background-color: var(--table-header-bg); }
 
 .text-left { text-align: left; } .text-right { text-align: right; } .text-center { text-align: center; }
 .text-success { color: var(--success-color) !important; } .text-danger { color: var(--danger-color) !important; }
