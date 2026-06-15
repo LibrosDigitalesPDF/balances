@@ -56,7 +56,6 @@ function getValDate(selector, tr) {
     const el = tr.querySelector(selector);
     if (!el) return "";
     const raw = el.getAttribute('data-raw');
-    // Si el usuario no modificó el texto visible, enviamos el dato original intacto (Anti-Corrupción de Fechas)
     if (el.value === formatDateToAR(raw)) return raw;
     return el.value;
 }
@@ -121,8 +120,8 @@ function initTabs() {
 // -------------------------------------------------------------
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
-    appState.balances.gastos["Liquidación de Sueldos"] = {};
-    const gastosSueldos = appState.balances.gastos["Liquidación de Sueldos"];
+    appState.balances.gastos["Sueldos"] = {};
+    const gastosSueldos = appState.balances.gastos["Sueldos"];
 
     Object.keys(appState.sueldos).forEach(year => {
         appState.sueldos[year].forEach((worker, wIndex) => {
@@ -130,8 +129,7 @@ function injectSueldosIntoBalances() {
             
             for (let m = 0; m < 12; m++) {
                 const offset = m * 14;
-                // Si el mes no tiene nombre escrito, buscamos en la Columna A (offset 0)
-                const nombre = rData[offset] || rData[0];
+                const nombre = rData[offset];
                 if (!nombre || nombre === "-") continue;
 
                 const monthStr = String(m + 1).padStart(2, '0');
@@ -202,7 +200,6 @@ function populateSidebarHistory() {
 }
 
 function setupEventListeners() {
-    // Balances
     document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
     document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
     document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
@@ -210,12 +207,12 @@ function setupEventListeners() {
 
     document.getElementById("btn-add-tab-sheet").onclick = () => {
         const t = prompt("Nombre de la nueva cuenta:"); if(!t || t.trim()==="") return;
-        if(t.trim().toLowerCase()==="ingresos" || t.trim().toLowerCase()==="carpetas" || t.trim().toLowerCase()==="liquidación de sueldos") { alert("Nombre reservado."); return; }
+        if(t.trim().toLowerCase()==="ingresos" || t.trim().toLowerCase()==="carpetas" || t.trim().toLowerCase()==="sueldos") { alert("Nombre reservado."); return; }
         sendGlobalPostRequest("BAL_ADD_TAB", { sheetName: t.trim() });
     };
     
     document.getElementById("btn-del-tab-sheet").onclick = () => {
-        if(!appState.currentHistorySheet || appState.currentHistoryType==="ingresos" || appState.currentHistorySheet==="Liquidación de Sueldos") { alert("Seleccione un gasto válido creado por usted."); return; }
+        if(!appState.currentHistorySheet || appState.currentHistoryType==="ingresos" || appState.currentHistorySheet==="Sueldos") { alert("Seleccione un gasto válido creado por usted."); return; }
         if(confirm(`¿Eliminar la cuenta '${appState.currentHistorySheet}'?`)) { sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet }); appState.currentHistorySheet = null; document.querySelector('.menu-btn[data-tab="balance"]').click(); }
     };
 
@@ -229,7 +226,6 @@ function setupEventListeners() {
         sendGlobalPostRequest("UPDATE_FOLDERS", payload);
     };
 
-    // Historial Balances (Nuevo Modo Global)
     document.getElementById("btn-historial-edit-mode").onclick = () => toggleHistorialEditMode(true);
     document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
     document.getElementById("btn-historial-save").onclick = () => saveHistorial();
@@ -241,7 +237,6 @@ function setupEventListeners() {
         tb.insertBefore(createBalanceRowHTML({ rowIndex: null, fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }), tb.firstChild);
     };
 
-    // Proveedores 
     document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
@@ -261,7 +256,6 @@ function setupEventListeners() {
         renderProveedores();
     };
 
-    // Sueldos
     document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); };
     document.getElementById("sueldos-year").onchange = (e) => { 
         const newYear = e.target.value;
@@ -315,14 +309,14 @@ function fetchFinancialData() {
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
             if (appState.currentHistorySheet) { 
                 renderHistoryTable(); 
-                if (appState.currentHistorySheet !== "Liquidación de Sueldos") renderCarpetasSection(appState.currentHistorySheet); 
+                if (appState.currentHistorySheet !== "Sueldos") renderCarpetasSection(appState.currentHistorySheet); 
             }
         }
     }).finally(() => toggleLoader(false));
 }
 
 // ==========================================
-// MÓDULO: BALANCES E HISTORIAL MUNDIAL
+// MÓDULO: BALANCES E HISTORIAL
 // ==========================================
 function renderBalance() {
     if (!appState.balances) return;
@@ -374,7 +368,6 @@ function openHistoryView(s, t, b) {
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     
-    // Predeterminado: Mes en curso
     const m = appState.selectedMonth; const y = appState.selectedYear;
     document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y; 
     appState.historyMonth = m; appState.historyYear = y;
@@ -386,8 +379,8 @@ function openHistoryView(s, t, b) {
 
     const theadTr = document.getElementById("historial-thead-tr");
     
-    if (s === "Liquidación de Sueldos") {
-        document.getElementById("btn-historial-edit-mode").classList.add("hidden"); // Sueldos no se editan desde acá
+    if (s === "Sueldos") {
+        document.getElementById("btn-historial-edit-mode").classList.add("hidden"); 
         document.getElementById("carpetas-config-section").classList.add("hidden");
         theadTr.innerHTML = `
             <th class="text-left">Nombre</th>
@@ -414,8 +407,7 @@ function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
     const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
 
-    // Ajustar cabeceras en edición
-    if (s !== "Liquidación de Sueldos") {
+    if (s !== "Sueldos") {
         const theadTr = document.getElementById("historial-thead-tr");
         let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`;
         theadTr.innerHTML = `
@@ -670,7 +662,7 @@ async function saveProveedores() {
 }
 
 // ==========================================
-// MÓDULO: SUELDOS
+// MÓDULO: SUELDOS (Con Lógica Mensual Aislada)
 // ==========================================
 function renderSueldos() {
     const year = appState.sueldosYear; 
@@ -693,7 +685,10 @@ function renderSueldos() {
     } else { 
         activeWorkers = yearData.filter(worker => { 
             const dataMes = worker.rowData.slice(offset, offset + 14); 
-            return dataMes.some(val => val !== "" && val !== "-"); 
+            const tieneDatosEsteMes = dataMes.some(val => val !== "" && val !== "-"); 
+            const prevMesName = month > 0 ? worker.rowData[(month - 1) * 14] : "";
+            const teniaDatosMesAnterior = prevMesName !== "" && prevMesName !== "-";
+            return tieneDatosEsteMes || teniaDatosMesAnterior; 
         }); 
     }
     
@@ -743,9 +738,13 @@ function renderSueldos() {
         const tr = document.createElement("tr"); 
         const rData = worker.rowData;
         
+        // Auto-completado del nombre si viene del mes anterior
+        const nombrePrevio = month > 0 ? rData[(month - 1) * 14] : "";
+        const nombreAmostrar = rData[offset] || nombrePrevio || rData[0] || "";
+        
         if (appState.sueldosEditMode) {
             let rowHtml = `
-                <td><input type="text" class="edit-input s-nom" value="${rData[offset] || rData[0] || ''}"></td>
+                <td><input type="text" class="edit-input s-nom" value="${nombreAmostrar}"></td>
                 <td><input type="number" step="0.01" class="edit-input s-sue" value="${parseMonto(rData[offset+13]) || ''}"></td>
                 <td><input type="text" class="edit-input s-fp" data-raw="${rData[offset+12] || ''}" value="${formatDateToAR(rData[offset+12])}" placeholder="DD/MM/AAAA"></td>
                 <td><input type="text" class="edit-input s-mes" value="${rData[offset+1] || MESES_NOMBRES[month]}"></td>`;
@@ -763,7 +762,7 @@ function renderSueldos() {
                 </td>
                 <td><input type="number" step="0.01" class="edit-input s-ph" value="${parseMonto(rData[offset+3]) || ''}"></td>
                 <td><input type="text" class="edit-input s-hor" value="${rData[offset+2] || ''}" style="text-align:center;"></td>
-                <td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="archiveWorker(${worker.rowIndex})">Archivar</button></td>`;
+                <td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="window.archiveWorker(this, ${worker.rowIndex})">Borrar Mes</button></td>`;
                 
             tr.setAttribute("data-row-index", worker.rowIndex || "NEW"); 
             tr.innerHTML = rowHtml;
@@ -772,7 +771,7 @@ function renderSueldos() {
             if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
             
             let rowHtml = `
-                <td class="text-left" style="font-weight:600;">${rData[offset] || rData[0] || '-'}</td>
+                <td class="text-left" style="font-weight:600;">${nombreAmostrar || '-'}</td>
                 <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(parseMonto(rData[offset+13]))}</td>
                 <td class="text-left">${formatDateToAR(rData[offset+12]) || '-'}</td>
                 <td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td>`;
@@ -793,8 +792,26 @@ function renderSueldos() {
 }
 
 function toggleSueldosEditMode(isEdit) { appState.sueldosEditMode = isEdit; const btnEdit = document.getElementById("btn-sueldos-edit-mode"); const btnSave = document.getElementById("btn-sueldos-save"); const btnCancel = document.getElementById("btn-sueldos-cancel"); if (isEdit) { btnEdit.classList.add("hidden"); btnSave.classList.remove("hidden"); btnCancel.classList.remove("hidden"); } else { btnEdit.classList.remove("hidden"); btnSave.classList.add("hidden"); btnCancel.classList.add("hidden"); } renderSueldos(); }
-function addSueldoEmptyRow() { if (!appState.sueldosEditMode) toggleSueldosEditMode(true); const year = appState.sueldosYear; if (!appState.sueldos[year]) appState.sueldos[year] = []; let newRow = Array(168).fill("-"); const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; for(let i=0; i<14; i++) newRow[offset + i] = ""; newRow[offset + 1] = MESES_NOMBRES[month]; appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow }); renderSueldos(); }
-function archiveWorker(rowIndex) { if(!confirm("¿Archivar trabajador?")) return; const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); if (!worker) return; for (let i = offset; i < 168; i++) worker.rowData[i] = "-"; sendGlobalPostRequest("SUELDO_SAVE_ROW", { year: year, rowIndex: rowIndex, rowData: worker.rowData }); }
+function addSueldoEmptyRow() { if (!appState.sueldosEditMode) toggleSueldosEditMode(true); const year = appState.sueldosYear; if (!appState.sueldos[year]) appState.sueldos[year] = []; let newRow = Array(168).fill(""); const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; newRow[offset + 1] = MESES_NOMBRES[month]; appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow }); renderSueldos(); }
+
+window.archiveWorker = function(btn, rowIndex) { 
+    if(!confirm("¿Borrar datos del trabajador de ESTE MES? (Se mantendrá intacto en el historial de otros meses)")) return; 
+    const year = appState.sueldosYear; 
+    const month = parseInt(appState.sueldosMonth) - 1; 
+    const offset = month * 14; 
+    
+    if (rowIndex === "NEW" || rowIndex === null) {
+        btn.closest("tr").remove();
+        return;
+    }
+
+    let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
+    if (!worker) return; 
+    
+    // Solo borramos las 14 columnas de ESTE mes
+    for (let i = offset; i < offset + 14; i++) worker.rowData[i] = ""; 
+    sendGlobalPostRequest("SUELDO_SAVE_ROW", { year: year, rowIndex: rowIndex, rowData: worker.rowData }); 
+}
 
 async function saveSueldos() {
     const tbody = document.getElementById("sueldos-tbody"); const rows = tbody.querySelectorAll("tr"); const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; toggleLoader(true, "Guardando registros...");
@@ -802,14 +819,13 @@ async function saveSueldos() {
         for (let tr of rows) { 
             let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); 
             let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
-            let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill("-"); 
+            
+            // Toma la fila completa original, no pisa otros meses
+            let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill(""); 
             const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; 
             
-            const nombre = getVal('.s-nom');
-            // Repite el nombre a lo largo de todos los meses de la fila para que nunca se pierda
-            for (let m = 0; m < 12; m++) finalRowData[m * 14] = nombre; 
-            
-            finalRowData[offset] = nombre; 
+            // Solo se sobreescriben las 14 columnas del mes actual
+            finalRowData[offset] = getVal('.s-nom'); 
             finalRowData[offset+1] = getVal('.s-mes'); 
             finalRowData[offset+2] = getVal('.s-hor'); 
             finalRowData[offset+3] = getVal('.s-ph'); 
