@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- LOADER PRINCIPAL -->
     <div id="main-loader" class="loader-overlay">
         <div class="spinner-container">
             <div class="spinner"></div>
@@ -14,8 +15,10 @@
         </div>
     </div>
 
+    <!-- INPUT OCULTO DRIVE -->
     <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
 
+    <!-- MODAL WEB PROVEEDORES -->
     <div id="web-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
@@ -39,6 +42,7 @@
         </div>
     </div>
 
+    <!-- NAVEGACIÓN SUPERIOR (AZUL FRANCIA) -->
     <nav class="top-navbar">
         <div class="nav-brand">
             <img src="logo.png" alt="Logo Residencial Francia" style="height: 40px; width: auto; display: block; border-radius: 0; object-fit: contain;">
@@ -61,11 +65,13 @@
         </div>
     </nav>
 
+    <!-- MÓDULO 1: BALANCES -->
     <div id="module-balances" class="app-module active">
         <aside class="sidebar">
             <nav class="sidebar-menu">
                 <button class="menu-btn active" data-tab="balance"><span>Balance Mensual</span></button>
                 <button class="menu-btn" data-tab="resumen-anual"><span>Resumen Anual</span></button>
+                <button class="menu-btn" data-tab="nueva-operacion"><span>Registrar Nueva Operación</span></button>
             </nav>
             <div class="sidebar-history">
                 <h3 class="sidebar-heading">Historial y Edición</h3>
@@ -84,7 +90,7 @@
             </div>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content full-width">
             <header class="main-header">
                 <div class="header-title">
                     <h1 id="tab-title">Balance</h1>
@@ -93,6 +99,7 @@
             </header>
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
                 
+                <!-- TAB: BALANCE MENSUAL -->
                 <section id="view-balance" class="tab-view active">
                     <div class="selector-group" style="margin-bottom: 30px;">
                         <div class="control-field">
@@ -117,7 +124,7 @@
                     <div id="empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No se registraron movimientos en este período.</div>
                     
                     <div id="balance-content-wrapper">
-                        <div class="financial-section" style="margin-bottom: 40px;">
+                        <div class="financial-section" style="margin-bottom: 60px;">
                             <h3 class="section-title text-left">Gastos</h3>
                             <div class="list-container accordion-container" id="gastos-list"></div>
                             <div class="section-total-row">
@@ -144,6 +151,7 @@
                     </div>
                 </section>
 
+                <!-- TAB: RESUMEN ANUAL -->
                 <section id="view-resumen-anual" class="tab-view">
                     <h3 class="section-title text-left" style="margin-bottom: 24px;">Resumen Consolidado Anual</h3>
                     <div class="table-responsive">
@@ -158,6 +166,42 @@
                     </div>
                 </section>
 
+                <!-- TAB NUEVA: REGISTRAR NUEVA OPERACIÓN -->
+                <section id="view-nueva-operacion" class="tab-view">
+                    <h3 class="section-title text-left" style="margin-bottom: 24px;">Cargar Nueva Operación Manual</h3>
+                    <div style="max-width: 600px;">
+                        <div class="control-field" style="margin-bottom: 15px;">
+                            <label>Cuenta de Destino (Seleccione Desplegable)</label>
+                            <select id="new-op-cuenta" class="form-control"></select>
+                        </div>
+                        <div class="control-field" style="margin-bottom: 15px;">
+                            <label>Fecha (DD/MM/AAAA)</label>
+                            <input type="text" id="new-op-fec" class="edit-input" placeholder="Ej: 15/05/2026">
+                        </div>
+                        <div class="control-field" style="margin-bottom: 15px;">
+                            <label>Detalle / Nombre</label>
+                            <input type="text" id="new-op-det" class="edit-input">
+                        </div>
+                        <div class="control-field" style="margin-bottom: 15px;">
+                            <label>Monto</label>
+                            <input type="number" step="0.01" id="new-op-mon" class="edit-input" placeholder="Ingresar sin signo negativo">
+                        </div>
+                        <div class="control-field" style="margin-bottom: 15px;">
+                            <label>Operación</label>
+                            <input type="text" id="new-op-ope" class="edit-input">
+                        </div>
+                        <div style="display:flex; gap:10px; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div class="control-field" style="flex:1; min-width: 120px;"><label>IVA 21%</label><input type="text" id="new-op-i21" class="edit-input"></div>
+                            <div class="control-field" style="flex:1; min-width: 120px;"><label>IVA 10.5%</label><input type="text" id="new-op-i10" class="edit-input"></div>
+                            <div class="control-field" style="flex:1; min-width: 120px;"><label>IVA Cont.</label><input type="text" id="new-op-icont" class="edit-input"></div>
+                        </div>
+                        <div class="action-buttons" style="justify-content: flex-start; margin-top: 30px;">
+                            <button id="btn-save-nueva-op" class="btn" style="background: var(--primary-color); color: white; border: none; padding: 12px 24px;">Guardar Operación</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB: HISTORIAL Y EDICIÓN -->
                 <section id="view-historial" class="tab-view" style="flex-grow: 1; display: flex; flex-direction: column;">
                     <div style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
@@ -166,18 +210,18 @@
                                 <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
                                 <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
                                 
-                                <button id="btn-historial-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nueva Operación</button>
                                 <button id="btn-historial-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
                                 <button id="btn-historial-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
                                 <button id="btn-historial-cancel" class="btn btn-secondary hidden">Cancelar</button>
                             </div>
                         </div>
                         
-                        <div class="table-responsive" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
                             <table class="data-table hidden" id="historial-table">
                                 <thead>
                                     <tr id="historial-thead-tr">
-                                        </tr>
+                                        <!-- Columnas dinámicas -->
+                                    </tr>
                                 </thead>
                                 <tbody id="historial-tbody"></tbody>
                             </table>
@@ -188,6 +232,7 @@
                             <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
                         </div>
 
+                        <!-- CARPETAS INTEGRADAS ABAJO DE TODO -->
                         <div id="carpetas-config-section" class="hidden" style="flex-shrink: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
                                 <h3 class="section-title text-left" style="margin: 0; border: none; font-size: 10pt; opacity: 0.7;">Enlaces de Drive</h3>
@@ -222,6 +267,7 @@
         </main>
     </div>
 
+    <!-- MÓDULO 2: PROVEEDORES -->
     <div id="module-proveedores" class="app-module hidden">
         <aside class="sidebar">
             <nav class="sidebar-menu">
@@ -235,7 +281,7 @@
             </div>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content full-width">
             <header class="main-header" style="flex-wrap: wrap; gap: 15px;">
                 <div class="header-title">
                     <h1 id="prov-tab-title">Directorio de Proveedores</h1>
@@ -250,7 +296,7 @@
             </header>
 
             <div style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; padding-top: 10px;">
-                <div class="table-responsive" style="flex-grow: 1; overflow: auto;">
+                <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto;">
                     <table class="data-table" id="proveedores-table">
                         <thead>
                             <tr>
@@ -272,6 +318,7 @@
         </main>
     </div>
 
+    <!-- MÓDULO 3: SUELDOS -->
     <div id="module-sueldos" class="app-module hidden">
         <aside class="sidebar">
             <nav class="sidebar-menu">
@@ -279,7 +326,7 @@
             </nav>
             <div class="sidebar-history"><h3 class="sidebar-heading">Gestión de RRHH</h3></div>
         </aside>
-        <main class="main-content">
+        <main class="main-content full-width">
             <header class="main-header">
                 <div class="header-title"><h1>Liquidación de Sueldos</h1></div>
             </header>
@@ -295,20 +342,21 @@
                             <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
                         </div>
                     </div>
-                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros.</div>
-                    <div id="sueldos-card-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                            <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
-                            <div style="display: flex; gap: 10px;">
-                                <button id="btn-sueldos-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
-                                <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
-                                <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
-                                <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
-                            </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-sueldos-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
+                            <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
+                            <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
+                            <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
                         </div>
-                        <div class="table-responsive" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
-                            <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
-                        </div>
+                    </div>
+
+                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros de pago para este mes. Presione "Editar Tabla" para agregar sueldos.</div>
+                    
+                    <div class="table-responsive nowrap-table" id="sueldos-table-container" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
                     </div>
                 </section>
             </div>
