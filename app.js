@@ -110,13 +110,14 @@ function initTabs() {
             document.querySelectorAll("#module-balances .tab-view").forEach(view => view.classList.toggle("active", view.id === `view-${tab}`));
             if (tab === "balance") { document.getElementById("tab-title").textContent = "Balance"; document.getElementById("tab-subtitle").textContent = "Resumen consolidado"; }
             else if (tab === "resumen-anual") { document.getElementById("tab-title").textContent = "Resumen Anual"; renderAnnualSummary(); }
+            else if (tab === "nueva-operacion") { document.getElementById("tab-title").textContent = "Nueva Operación"; document.getElementById("tab-subtitle").textContent = "Registro manual de flujos"; }
             document.querySelectorAll(".history-btn").forEach(b => b.classList.remove("active"));
         });
     });
 }
 
 // -------------------------------------------------------------
-// INTEGRADOR AUTOMÁTICO DE SUELDOS A BALANCES
+// INTEGRADOR AUTOMÁTICO DE SUELDOS
 // -------------------------------------------------------------
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
@@ -129,7 +130,7 @@ function injectSueldosIntoBalances() {
             
             for (let m = 0; m < 12; m++) {
                 const offset = m * 14;
-                const nombre = rData[offset];
+                const nombre = rData[offset] || rData[0];
                 if (!nombre || nombre === "-") continue;
 
                 const monthStr = String(m + 1).padStart(2, '0');
@@ -199,7 +200,30 @@ function populateSidebarHistory() {
     btnI.onclick = () => openHistoryView("Ingresos", "ingresos", btnI); iList.appendChild(btnI);
 }
 
+function populateCuentasDropdown() {
+    const select = document.getElementById("new-op-cuenta");
+    if (!select || !appState.balances) return;
+    select.innerHTML = '<option value="">-- Seleccione una cuenta --</option>';
+    
+    const optgroupI = document.createElement("optgroup");
+    optgroupI.label = "INGRESOS";
+    const optI = document.createElement("option");
+    optI.value = "Ingresos"; optI.textContent = "Ingresos";
+    optgroupI.appendChild(optI); select.appendChild(optgroupI);
+
+    const optgroupG = document.createElement("optgroup");
+    optgroupG.label = "GASTOS";
+    Object.keys(appState.balances.gastos).sort().forEach(s => {
+        if(s === "Sueldos") return; // Ocultamos sueldos para evitar carga manual
+        const opt = document.createElement("option");
+        opt.value = s; opt.textContent = s;
+        optgroupG.appendChild(opt);
+    });
+    select.appendChild(optgroupG);
+}
+
 function setupEventListeners() {
+    // Balances
     document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
     document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
     document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
@@ -216,6 +240,28 @@ function setupEventListeners() {
         if(confirm(`¿Eliminar la cuenta '${appState.currentHistorySheet}'?`)) { sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet }); appState.currentHistorySheet = null; document.querySelector('.menu-btn[data-tab="balance"]').click(); }
     };
 
+    // Nueva Operación Manual
+    document.getElementById("btn-save-nueva-op").onclick = () => {
+        const cuenta = document.getElementById("new-op-cuenta").value;
+        const fecha = document.getElementById("new-op-fec").value;
+        const det = document.getElementById("new-op-det").value;
+        let mon = parseMonto(document.getElementById("new-op-mon").value);
+        const ope = document.getElementById("new-op-ope").value;
+        const i21 = document.getElementById("new-op-i21").value;
+        const i10 = document.getElementById("new-op-i10").value;
+        const icont = document.getElementById("new-op-icont").value;
+
+        if(!cuenta || !fecha || !mon) { alert("Complete cuenta de destino, fecha y monto para guardar."); return; }
+
+        let isGasto = cuenta !== "Ingresos";
+        if(isGasto && mon > 0) mon = -mon;
+
+        const payload = { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: "", idComprobantePago: "" };
+        sendGlobalPostRequest("BAL_ADD", payload);
+        document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = "");
+        document.getElementById("new-op-cuenta").value = "";
+    };
+
     document.getElementById("btn-edit-carpetas").onclick = () => {
         document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.add("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.remove("hidden"));
         document.getElementById("btn-edit-carpetas").classList.add("hidden"); document.getElementById("btn-save-carpetas").classList.remove("hidden"); document.getElementById("btn-cancel-carpetas").classList.remove("hidden");
@@ -229,14 +275,8 @@ function setupEventListeners() {
     document.getElementById("btn-historial-edit-mode").onclick = () => toggleHistorialEditMode(true);
     document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
     document.getElementById("btn-historial-save").onclick = () => saveHistorial();
-    document.getElementById("btn-historial-add").onclick = () => {
-        if (!appState.historialEditMode) toggleHistorialEditMode(true);
-        const tb = document.getElementById("historial-tbody");
-        document.getElementById("historial-table").classList.remove("hidden");
-        document.getElementById("historial-empty").classList.add("hidden");
-        tb.insertBefore(createBalanceRowHTML({ rowIndex: null, fecha: "", detalle: "", monto: "", operacion: "", iva21: "", iva105: "", ivaCont: "", idComprobanteCompra: "", idComprobantePago: "" }), tb.firstChild);
-    };
 
+    // Proveedores
     document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => {
         btn.onclick = () => {
             document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
@@ -256,6 +296,7 @@ function setupEventListeners() {
         renderProveedores();
     };
 
+    // Sueldos
     document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; renderSueldos(); };
     document.getElementById("sueldos-year").onchange = (e) => { 
         const newYear = e.target.value;
@@ -304,7 +345,9 @@ function fetchFinancialData() {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
             injectSueldosIntoBalances();
-            populateSidebarHistory(); renderBalance(); renderProveedores();
+            populateSidebarHistory(); 
+            populateCuentasDropdown();
+            renderBalance(); renderProveedores();
             if (document.getElementById("module-sueldos").classList.contains("active")) renderSueldos();
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
             if (appState.currentHistorySheet) { 
@@ -316,7 +359,7 @@ function fetchFinancialData() {
 }
 
 // ==========================================
-// MÓDULO: BALANCES E HISTORIAL
+// MÓDULO: BALANCES
 // ==========================================
 function renderBalance() {
     if (!appState.balances) return;
@@ -356,7 +399,7 @@ function toggleHistorialEditMode(isEdit) {
     document.getElementById("btn-historial-edit-mode").classList.toggle("hidden", isEdit);
     document.getElementById("btn-historial-save").classList.toggle("hidden", !isEdit);
     document.getElementById("btn-historial-cancel").classList.toggle("hidden", !isEdit);
-    document.getElementById("btn-historial-add").classList.toggle("hidden", !isEdit);
+    document.getElementById("btn-historial-add").classList.add("hidden"); 
     renderHistoryTable();
 }
 
@@ -672,7 +715,7 @@ function renderSueldos() {
     const thead = document.getElementById("sueldos-thead"); 
     const tbody = document.getElementById("sueldos-tbody"); 
     const emptyState = document.getElementById("sueldos-empty-state"); 
-    const tableCard = document.getElementById("sueldos-card-content");
+    const tableContainer = document.getElementById("sueldos-table-container");
     
     thead.innerHTML = ""; 
     tbody.innerHTML = "";
@@ -694,11 +737,11 @@ function renderSueldos() {
     
     if (activeWorkers.length === 0 && !appState.sueldosEditMode) { 
         emptyState.classList.remove("hidden"); 
-        tableCard.classList.add("hidden"); 
+        tableContainer.classList.add("hidden"); 
         return; 
     } else { 
         emptyState.classList.add("hidden"); 
-        tableCard.classList.remove("hidden"); 
+        tableContainer.classList.remove("hidden"); 
     }
     
     activeWorkers.sort((a, b) => { 
@@ -738,7 +781,6 @@ function renderSueldos() {
         const tr = document.createElement("tr"); 
         const rData = worker.rowData;
         
-        // Auto-completado del nombre si viene del mes anterior
         const nombrePrevio = month > 0 ? rData[(month - 1) * 14] : "";
         const nombreAmostrar = rData[offset] || nombrePrevio || rData[0] || "";
         
@@ -791,8 +833,26 @@ function renderSueldos() {
     });
 }
 
-function toggleSueldosEditMode(isEdit) { appState.sueldosEditMode = isEdit; const btnEdit = document.getElementById("btn-sueldos-edit-mode"); const btnSave = document.getElementById("btn-sueldos-save"); const btnCancel = document.getElementById("btn-sueldos-cancel"); if (isEdit) { btnEdit.classList.add("hidden"); btnSave.classList.remove("hidden"); btnCancel.classList.remove("hidden"); } else { btnEdit.classList.remove("hidden"); btnSave.classList.add("hidden"); btnCancel.classList.add("hidden"); } renderSueldos(); }
-function addSueldoEmptyRow() { if (!appState.sueldosEditMode) toggleSueldosEditMode(true); const year = appState.sueldosYear; if (!appState.sueldos[year]) appState.sueldos[year] = []; let newRow = Array(168).fill(""); const month = parseInt(appState.sueldosMonth) - 1; const offset = month * 14; newRow[offset + 1] = MESES_NOMBRES[month]; appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow }); renderSueldos(); }
+function toggleSueldosEditMode(isEdit) { 
+    appState.sueldosEditMode = isEdit; 
+    document.getElementById("btn-sueldos-edit-mode").classList.toggle("hidden", isEdit); 
+    document.getElementById("btn-sueldos-save").classList.toggle("hidden", !isEdit); 
+    document.getElementById("btn-sueldos-cancel").classList.toggle("hidden", !isEdit); 
+    document.getElementById("btn-sueldos-add").classList.toggle("hidden", !isEdit); 
+    renderSueldos(); 
+}
+
+function addSueldoEmptyRow() { 
+    if (!appState.sueldosEditMode) toggleSueldosEditMode(true); 
+    const year = appState.sueldosYear; 
+    if (!appState.sueldos[year]) appState.sueldos[year] = []; 
+    let newRow = Array(168).fill(""); 
+    const month = parseInt(appState.sueldosMonth) - 1; 
+    const offset = month * 14; 
+    newRow[offset + 1] = MESES_NOMBRES[month]; 
+    appState.sueldos[year].unshift({ rowIndex: null, rowData: newRow }); 
+    renderSueldos(); 
+}
 
 window.archiveWorker = function(btn, rowIndex) { 
     if(!confirm("¿Borrar datos del trabajador de ESTE MES? (Se mantendrá intacto en el historial de otros meses)")) return; 
@@ -807,8 +867,6 @@ window.archiveWorker = function(btn, rowIndex) {
 
     let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
     if (!worker) return; 
-    
-    // Solo borramos las 14 columnas de ESTE mes
     for (let i = offset; i < offset + 14; i++) worker.rowData[i] = ""; 
     sendGlobalPostRequest("SUELDO_SAVE_ROW", { year: year, rowIndex: rowIndex, rowData: worker.rowData }); 
 }
@@ -820,11 +878,9 @@ async function saveSueldos() {
             let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); 
             let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
             
-            // Toma la fila completa original, no pisa otros meses
             let finalRowData = workerObj ? [...workerObj.rowData] : Array(168).fill(""); 
             const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; 
             
-            // Solo se sobreescriben las 14 columnas del mes actual
             finalRowData[offset] = getVal('.s-nom'); 
             finalRowData[offset+1] = getVal('.s-mes'); 
             finalRowData[offset+2] = getVal('.s-hor'); 
