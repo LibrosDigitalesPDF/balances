@@ -7,7 +7,7 @@
     --sidebar-text: #94a3b8;
     --sidebar-text-active: #ffffff;
     --sidebar-bg-active: #1e293b;
-    --card-bg: transparent; /* Integración absoluta sin recuadros */
+    --card-bg: transparent; 
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --primary-color: #3b82f6;
@@ -42,7 +42,7 @@ body {
 }
 
 /* =========================================
-   LOADER Y MODALES MINIMALISTAS
+   LOADER Y MODALES
    ========================================= */
 .loader-overlay, .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -62,7 +62,7 @@ body {
 .modal-content { background-color: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; width: 90%; max-width: 450px; }
 
 /* =========================================
-   CABECERA AZUL FRANCIA (INALTERABLE AL MODO)
+   CABECERA AZUL FRANCIA (INALTERABLE)
    ========================================= */
 .top-navbar {
     display: flex; justify-content: space-between; align-items: flex-end; height: 70px;
@@ -70,7 +70,7 @@ body {
     border-bottom: 2px solid rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100;
 }
 .nav-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
-.nav-brand h2 { font-size: 13.5pt; font-weight: 700; color: #ffffff !important; } /* Contraste total blanco */
+.nav-brand h2 { font-size: 13.5pt; font-weight: 700; color: #ffffff !important; }
 .nav-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; color: #ffffff; }
 .nav-actions .btn { color: #ffffff !important; border-color: rgba(255,255,255,0.2); }
 
@@ -87,7 +87,7 @@ body {
 }
 
 /* =========================================
-   LAYOUT Y SIDEBAR LATERAL
+   LAYOUT Y SIDEBAR
    ========================================= */
 .app-module { display: none; flex-grow: 1; height: calc(100vh - 70px); overflow: hidden; }
 .app-module.active { display: flex; }
@@ -116,19 +116,15 @@ body {
 }
 .history-btn:hover { color: var(--sidebar-text-active); background-color: rgba(255,255,255,0.04); }
 .history-btn.active { color: var(--sidebar-text-active); font-weight: 600; border-left: 3px solid var(--primary-color); background-color: var(--sidebar-bg-active); }
-.sidebar-footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 8.5pt; color: var(--sidebar-text); text-align: center; }
 
 /* =========================================
-   CONTENIDO CENTRAL MINIMALISTA (SIN CAJAS)
+   CONTENIDO CENTRAL MINIMALISTA
    ========================================= */
 .main-content { flex-grow: 1; padding: 30px 50px; overflow-y: auto; display: flex; flex-direction: column; gap: 28px; }
-.main-content.full-width { max-width: 1400px; margin: 0 auto; width: 100%; }
+.main-content.full-width { max-width: 100%; margin: 0; width: 100%; } /* Ocupa todo el ancho */
 .main-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; flex-shrink: 0; }
 .main-header h1 { font-size: 17pt; font-weight: 700; color: var(--text-primary); }
 .header-subtitle { font-size: 10pt; color: var(--text-secondary); }
-
-/* Eliminación total de tarjetas pesadas */
-.card { background-color: transparent; border: none; box-shadow: none; padding: 0; margin-bottom: 10px; }
 
 .selector-group { display: flex; gap: 16px; flex-wrap: wrap; }
 .control-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
@@ -136,18 +132,23 @@ body {
 .form-control { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background-color: transparent; color: var(--text-primary); font-size: 10.5pt; font-weight: 500; outline: none; }
 
 /* =========================================
-   LOGICA DE FLUJO E INTEGRACIÓN EN BALANCES
+   LÓGICA DE BALANCES (NUEVO DISEÑO INTEGRADO)
    ========================================= */
+.financial-section { margin-bottom: 70px; } /* Gran separación entre Gastos e Ingresos */
+
 .section-title { font-size: 12pt; font-weight: 700; color: var(--text-primary); margin-bottom: 20px; border-left: 3px solid var(--primary-color); padding-left: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 #ingresos-section .section-title { border-left-color: var(--success-color); }
 
 .accordion-container { display: flex; flex-direction: column; gap: 0; }
 
-/* Separación ampliada entre cuentas operativas */
-.accordion-item { border-bottom: 1px solid var(--border-color); background: transparent; margin-bottom: 28px; padding-bottom: 8px; }
-.accordion-item:last-child { margin-bottom: 10px; }
+/* Cuentas juntas y SIN líneas divisorias */
+.accordion-item { 
+    border: none !important; 
+    background: transparent; 
+    margin-bottom: 8px; /* Cuentas más pegaditas */
+}
 
-.accordion-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; cursor: pointer; user-select: none; }
+.accordion-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; cursor: pointer; user-select: none; }
 .accordion-title-group { display: flex; align-items: center; gap: 12px; }
 .accordion-icon { width: 15px; height: 15px; transition: transform 0.2s; color: var(--text-secondary); }
 .accordion-item.open .accordion-icon { transform: rotate(180deg); }
@@ -156,52 +157,39 @@ body {
 .accordion-item.open .item-val { opacity: 0; pointer-events: none; }
 
 .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out; }
-.accordion-content { padding: 12px 0 16px 28px; }
+.accordion-content { padding: 8px 0 16px 28px; }
 
 /* =========================================
-   TABLAS DE DATOS INTEGRADAS E INVISIBLES
+   TABLAS DE DATOS Y DESGLOSES
    ========================================= */
 .table-responsive { width: 100%; overflow-x: auto; }
 .nowrap-table table { min-width: max-content; }
 .nowrap-table th, .nowrap-table td { white-space: nowrap; }
 
 .data-table, .detail-table { width: 100%; border-collapse: collapse; font-size: 10pt; background: transparent; }
-.data-table th, .data-table td, .detail-table th, .detail-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: left; background: transparent; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); text-align: left; background: transparent; }
 
-/* Encabezados puros sin fondos grises */
+/* Desgloses internos sin líneas divisorias */
+.detail-table th, .detail-table td { padding: 6px 12px; border-bottom: none !important; text-align: left; background: transparent; }
+.detail-table th { border-bottom: 1px dashed var(--border-color) !important; color: var(--text-secondary); }
+
 .data-table th, .detail-table th { font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color); }
 .data-table tbody tr:hover { background-color: var(--hover-bg); }
-.detail-table tbody tr:hover { background-color: transparent; } /* Evita parpadeos en desglose */
+.detail-table tbody tr:hover { background-color: transparent; }
 
 .sticky-col { position: sticky; right: 0; background-color: var(--bg-main); z-index: 2; border-left: 1px solid var(--border-color); }
 
 /* =========================================
-   SECCIÓN DE CARPETAS DE DRIVE INTEGRADA ABAJO
+   FORMULARIOS, BOTONES Y TOTALES
    ========================================= */
-#carpetas-config-section {
-    margin-top: auto; padding-top: 24px; border: none !important;
-    background: transparent !important; color: var(--text-secondary);
-}
-#carpetas-config-section .section-title { font-size: 10.5pt; border-left: 2px solid var(--text-secondary); color: var(--text-secondary); }
-#carpetas-config-section .control-field { min-width: 180px; }
-#carpetas-config-section label { font-size: 8pt; color: var(--text-secondary); }
-#carpetas-config-section .form-control {
-    font-size: 9pt; padding: 6px 10px; background: transparent; border: 1px dashed var(--border-color);
-    box-shadow: none; text-overflow: ellipsis;
-}
-#carpetas-config-section .edit-input { font-size: 9pt; padding: 6px 10px; }
-
-/* =========================================
-   CONTROLES Y SUMATORIAS FINALES
-   ========================================= */
-.edit-input { width: 100%; padding: 6px 8px; border: 1px solid var(--primary-color); border-radius: 4px; background-color: var(--bg-main); color: var(--text-primary); font-size: 9.5pt; outline: none; }
+.edit-input { width: 100%; padding: 8px 12px; border: 1px solid var(--primary-color); border-radius: 4px; background-color: var(--bg-main); color: var(--text-primary); font-size: 9.5pt; outline: none; }
 .action-buttons { display: flex; gap: 6px; justify-content: center; align-items: center; }
 .action-btn { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 8.5pt; font-weight: 600; color: white; }
 .btn-edit { background-color: var(--primary-color); }
 .btn-save { background-color: var(--success-color); }
 .btn-cancel { background-color: var(--text-secondary); }
 .btn-delete { background-color: var(--danger-color); }
-.btn-link { background-color: #6366f1; text-decoration: none; display: inline-block; } 
+.btn-link { background-color: #6366f1; text-decoration: none; display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-size: 8.5pt;} 
 
 .btn { padding: 8px 16px; border-radius: 6px; font-size: 9.5pt; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); }
 .btn-secondary:hover { background-color: var(--hover-bg); }
@@ -216,7 +204,7 @@ body {
 .final-label { font-weight: 800; font-size: 12pt; color: var(--text-primary); }
 .final-amount { font-weight: 900; font-size: 15pt; font-variant-numeric: tabular-nums; }
 .table-total-row { font-weight: bold; }
-.table-total-row td { border-top: 2px solid var(--border-color); }
+.table-total-row td { border-top: 2px solid var(--border-color) !important; padding-top: 10px !important; }
 
 .text-left { text-align: left; } .text-right { text-align: right; } .text-center { text-align: center; }
 .text-success { color: var(--success-color) !important; } .text-danger { color: var(--danger-color) !important; }
