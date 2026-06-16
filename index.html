@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- LOADER PRINCIPAL -->
     <div id="main-loader" class="loader-overlay">
         <div class="spinner-container">
             <div class="spinner"></div>
@@ -15,10 +14,8 @@
         </div>
     </div>
 
-    <!-- INPUT OCULTO DRIVE -->
     <input type="file" id="global-file-input" class="hidden" accept=".pdf,image/png,image/jpeg,image/jpg">
 
-    <!-- MODAL WEB PROVEEDORES -->
     <div id="web-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="section-title text-left" style="margin-bottom: 10px;">Página Web</h3>
@@ -42,7 +39,6 @@
         </div>
     </div>
 
-    <!-- NAVEGACIÓN SUPERIOR (AZUL FRANCIA) -->
     <nav class="top-navbar">
         <div class="nav-brand">
             <img src="logo.png" alt="Logo Residencial Francia" style="height: 40px; width: auto; display: block; border-radius: 0; object-fit: contain;">
@@ -65,7 +61,6 @@
         </div>
     </nav>
 
-    <!-- MÓDULO 1: BALANCES -->
     <div id="module-balances" class="app-module active">
         <aside class="sidebar">
             <nav class="sidebar-menu">
@@ -99,7 +94,6 @@
             </header>
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
                 
-                <!-- TAB: BALANCE MENSUAL -->
                 <section id="view-balance" class="tab-view active">
                     <div class="selector-group" style="margin-bottom: 30px;">
                         <div class="control-field">
@@ -151,7 +145,6 @@
                     </div>
                 </section>
 
-                <!-- TAB: RESUMEN ANUAL -->
                 <section id="view-resumen-anual" class="tab-view">
                     <h3 class="section-title text-left" style="margin-bottom: 24px;">Resumen Consolidado Anual</h3>
                     <div class="table-responsive">
@@ -166,7 +159,6 @@
                     </div>
                 </section>
 
-                <!-- TAB NUEVA: REGISTRAR NUEVA OPERACIÓN -->
                 <section id="view-nueva-operacion" class="tab-view">
                     <h3 class="section-title text-left" style="margin-bottom: 24px;">Cargar Nueva Operación Manual</h3>
                     <div style="max-width: 600px;">
@@ -195,79 +187,82 @@
                             <div class="control-field" style="flex:1; min-width: 120px;"><label>IVA 10.5%</label><input type="text" id="new-op-i10" class="edit-input"></div>
                             <div class="control-field" style="flex:1; min-width: 120px;"><label>IVA Cont.</label><input type="text" id="new-op-icont" class="edit-input"></div>
                         </div>
+                        <div style="display:flex; gap:10px; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div class="control-field" style="flex:1; min-width: 200px;">
+                                <label>ID Comprobante de Compra</label>
+                                <input type="text" id="new-op-comp-c" class="edit-input" placeholder="Pegar ID del archivo">
+                            </div>
+                            <div class="control-field" style="flex:1; min-width: 200px;">
+                                <label>ID Comprobante de Venta</label>
+                                <input type="text" id="new-op-comp-v" class="edit-input" placeholder="Pegar ID del archivo">
+                            </div>
+                        </div>
                         <div class="action-buttons" style="justify-content: flex-start; margin-top: 30px;">
                             <button id="btn-save-nueva-op" class="btn" style="background: var(--primary-color); color: white; border: none; padding: 12px 24px;">Guardar Operación</button>
                         </div>
                     </div>
                 </section>
 
-                <!-- TAB: HISTORIAL Y EDICIÓN -->
-                <section id="view-historial" class="tab-view" style="flex-grow: 1; display: flex; flex-direction: column;">
-                    <div style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
-                            <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
-                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
-                                <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
-                                
-                                <button id="btn-historial-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
-                                <button id="btn-historial-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
-                                <button id="btn-historial-cancel" class="btn btn-secondary hidden">Cancelar</button>
-                            </div>
+                <section id="view-historial" class="tab-view" style="flex-grow: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 10px;">
+                        <h3 class="section-title text-left" id="historial-title" style="margin-bottom:0;">Selecciona una pestaña</h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <select id="historial-month" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todo el Año</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
+                            <select id="historial-year" class="form-control" style="padding: 6px 10px; font-size: 9.5pt;"><option value="ALL">Todos los Años</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option></select>
+                            
+                            <button id="btn-historial-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
+                            <button id="btn-historial-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
+                            <button id="btn-historial-cancel" class="btn btn-secondary hidden">Cancelar</button>
                         </div>
-                        
-                        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
-                            <table class="data-table hidden" id="historial-table">
-                                <thead>
-                                    <tr id="historial-thead-tr">
-                                        <!-- Columnas dinámicas -->
+                    </div>
+                    
+                    <div class="table-responsive nowrap-table" style="margin-bottom: 20px;">
+                        <table class="data-table hidden" id="historial-table">
+                            <thead>
+                                <tr id="historial-thead-tr">
                                     </tr>
-                                </thead>
-                                <tbody id="historial-tbody"></tbody>
-                            </table>
-                            <div id="historial-empty" class="alert hidden" style="text-align:center; margin-top: 20px;">No hay registros para este período.</div>
-                        </div>
+                            </thead>
+                            <tbody id="historial-tbody"></tbody>
+                        </table>
+                        <div id="historial-empty" class="alert hidden" style="text-align:center; margin-top: 20px;">No hay registros para este período.</div>
+                    </div>
 
-                        <div class="section-total-row hidden" id="historial-total-row" style="flex-shrink: 0; margin-top: 0; margin-bottom: 30px;">
-                            <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
-                        </div>
+                    <div class="section-total-row hidden" id="historial-total-row" style="margin-bottom: 40px;">
+                        <span class="total-label text-left">TOTAL DE LA SELECCIÓN</span><span class="total-amount text-right" id="historial-total-value">$ 0,00</span>
+                    </div>
 
-                        <!-- CARPETAS INTEGRADAS ABAJO DE TODO -->
-                        <div id="carpetas-config-section" class="hidden" style="flex-shrink: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                                <h3 class="section-title text-left" style="margin: 0; border: none; font-size: 10pt; opacity: 0.7;">Enlaces de Drive</h3>
-                                <div class="action-buttons">
-                                    <button id="btn-edit-carpetas" class="action-btn btn-edit" style="background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 4px 8px;">Editar IDs</button>
-                                    <button id="btn-save-carpetas" class="action-btn btn-save hidden" style="padding: 4px 8px;">Guardar</button>
-                                    <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden" style="padding: 4px 8px;">Cancelar</button>
-                                </div>
-                            </div>
-                            <div class="selector-group" style="gap: 12px;">
-                                <div class="control-field" style="flex: 1; min-width: 150px;">
-                                    <label>ID Cuenta</label>
-                                    <div id="view-id-cuenta" class="form-control">-</div>
-                                    <input type="text" id="edit-id-cuenta" class="edit-input hidden" placeholder="ID">
-                                </div>
-                                <div class="control-field" style="flex: 1; min-width: 150px;">
-                                    <label>ID Compra</label>
-                                    <div id="view-id-compra" class="form-control">-</div>
-                                    <input type="text" id="edit-id-compra" class="edit-input hidden" placeholder="ID">
-                                </div>
-                                <div class="control-field" style="flex: 1; min-width: 150px;">
-                                    <label>ID Pago</label>
-                                    <div id="view-id-pago" class="form-control">-</div>
-                                    <input type="text" id="edit-id-pago" class="edit-input hidden" placeholder="ID">
-                                </div>
+                    <div id="carpetas-config-section" class="hidden" style="margin-top: 40px; padding-top: 20px; border-top: 1px dashed var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                            <h3 class="section-title text-left" style="margin: 0; border: none; font-size: 10pt; opacity: 0.7;">Enlaces de Drive de la Cuenta</h3>
+                            <div class="action-buttons">
+                                <button id="btn-edit-carpetas" class="action-btn btn-edit" style="background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 4px 8px;">Editar IDs</button>
+                                <button id="btn-save-carpetas" class="action-btn btn-save hidden" style="padding: 4px 8px;">Guardar</button>
+                                <button id="btn-cancel-carpetas" class="action-btn btn-cancel hidden" style="padding: 4px 8px;">Cancelar</button>
                             </div>
                         </div>
-
+                        <div class="selector-group" style="gap: 12px;">
+                            <div class="control-field" style="flex: 1; min-width: 150px;">
+                                <label>ID Cuenta</label>
+                                <div id="view-id-cuenta" class="form-control">-</div>
+                                <input type="text" id="edit-id-cuenta" class="edit-input hidden" placeholder="ID">
+                            </div>
+                            <div class="control-field" style="flex: 1; min-width: 150px;">
+                                <label>ID Compra</label>
+                                <div id="view-id-compra" class="form-control">-</div>
+                                <input type="text" id="edit-id-compra" class="edit-input hidden" placeholder="ID">
+                            </div>
+                            <div class="control-field" style="flex: 1; min-width: 150px;">
+                                <label>ID Pago</label>
+                                <div id="view-id-pago" class="form-control">-</div>
+                                <input type="text" id="edit-id-pago" class="edit-input hidden" placeholder="ID">
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
         </main>
     </div>
 
-    <!-- MÓDULO 2: PROVEEDORES -->
     <div id="module-proveedores" class="app-module hidden">
         <aside class="sidebar">
             <nav class="sidebar-menu">
@@ -318,7 +313,6 @@
         </main>
     </div>
 
-    <!-- MÓDULO 3: SUELDOS -->
     <div id="module-sueldos" class="app-module hidden">
         <aside class="sidebar">
             <nav class="sidebar-menu">
