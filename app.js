@@ -16,7 +16,7 @@ const LOADER_PHASES = [
 let appState = {
     balances: null, carpetas: {}, proveedores: [], sueldos: {}, 
     selectedMonth: "", selectedYear: "",
-    historyMonth: "", historyYear: "",
+    historyMonth: "ALL", historyYear: "ALL",
     sueldosMonth: "", sueldosYear: "", 
     sueldosEditMode: false, proveedoresEditMode: false, historialEditMode: false,
     currentHistorySheet: null, currentHistoryType: null,
@@ -95,11 +95,11 @@ function initSelectors() {
     const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear());
     appState.selectedMonth = m; appState.selectedYear = y; 
     appState.sueldosMonth = m; appState.sueldosYear = y;
-    appState.historyMonth = m; appState.historyYear = y;
+    appState.historyMonth = "ALL"; appState.historyYear = "ALL";
     
     document.getElementById("select-month").value = m; document.getElementById("select-year").value = y;
     document.getElementById("sueldos-month").value = m; document.getElementById("sueldos-year").value = y;
-    document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y;
+    document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL";
 }
 
 function initTabs() {
@@ -116,6 +116,9 @@ function initTabs() {
     });
 }
 
+// -------------------------------------------------------------
+// INTEGRADOR AUTOMÁTICO DE SUELDOS (CORREGIDO PARA NÚMEROS NEGATIVOS)
+// -------------------------------------------------------------
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
     appState.balances.gastos["Sueldos"] = {};
@@ -135,20 +138,21 @@ function injectSueldosIntoBalances() {
                 if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
                 
                 let methodStr = "-"; 
-                const valE = parseMonto(rData[offset+10]); 
-                const valT = parseMonto(rData[offset+11]);
+                const valE = Math.abs(parseMonto(rData[offset+10])); 
+                const valT = Math.abs(parseMonto(rData[offset+11]));
                 if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf.";
                 else if (valE > 0) methodStr = "Efectivo"; 
                 else if (valT > 0) methodStr = "Transferencia";
 
-                const sueldoNum = parseMonto(rData[offset + 13]);
+                // Leemos el sueldo (no importa si lo cargaste en negativo o positivo)
+                const sueldoNum = Math.abs(parseMonto(rData[offset + 13]));
                 const fechaRawSueldo = rData[offset + 12];
                 if (sueldoNum > 0) {
                     gastosSueldos[periodKey].push({
                         rowIndex: `s_${wIndex}_${m}_SF`, 
                         fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${year}`,
                         detalle: nombre, 
-                        monto: sueldoNum,
+                        monto: -sueldoNum, // Lo convertimos en gasto obligatorio para el balance
                         mes: MESES_NOMBRES[m],
                         metodoPago: methodStr,
                         precioHora: rData[offset+3] || "-",
@@ -165,13 +169,13 @@ function injectSueldosIntoBalances() {
                 ];
 
                 adelantos.forEach((ad, aIndex) => {
-                    const adMonto = parseMonto(rData[offset + ad.mIdx]);
+                    const adMonto = Math.abs(parseMonto(rData[offset + ad.mIdx]));
                     if (adMonto > 0) {
                         gastosSueldos[periodKey].push({
                             rowIndex: `s_${wIndex}_${m}_A${aIndex}`,
                             fecha: formatDateToAR(rData[offset + ad.fIdx]) || `01/${monthStr}/${year}`,
                             detalle: `${nombre} (${ad.tipo})`,
-                            monto: adMonto,
+                            monto: -adMonto, // Gasto obligatorio
                             mes: MESES_NOMBRES[m],
                             metodoPago: methodStr,
                             precioHora: "-",
@@ -408,7 +412,6 @@ function openHistoryView(s, t, b) {
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     
-    // CORRECCIÓN: Filtro predeterminado AL MES EN CURSO, sin errores de renderizado.
     const m = appState.selectedMonth; 
     const y = appState.selectedYear;
     document.getElementById("historial-month").value = m; 
@@ -450,7 +453,6 @@ function renderHistoryTable() {
     const s = appState.currentHistorySheet; const t = appState.currentHistoryType; 
     if (!s || !appState.balances || !appState.balances[t]) return;
     
-    // BLINDAJE ANTICRASHEO: Si la cuenta está vacía no tira error, se adapta.
     const tm = appState.balances[t][s] || {}; 
     const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
 
@@ -777,9 +779,9 @@ function renderSueldos() {
     
     let maxAdelantos = 0; 
     activeWorkers.forEach(w => { 
-        if (parseMonto(w.rowData[offset + 4]) > 0) maxAdelantos = Math.max(maxAdelantos, 1); 
-        if (parseMonto(w.rowData[offset + 6]) > 0) maxAdelantos = Math.max(maxAdelantos, 2); 
-        if (parseMonto(w.rowData[offset + 8]) > 0) maxAdelantos = Math.max(maxAdelantos, 3); 
+        if (parseMonto(w.rowData[offset + 4]) > 0 || parseMonto(w.rowData[offset + 4]) < 0) maxAdelantos = Math.max(maxAdelantos, 1); 
+        if (parseMonto(w.rowData[offset + 6]) > 0 || parseMonto(w.rowData[offset + 6]) < 0) maxAdelantos = Math.max(maxAdelantos, 2); 
+        if (parseMonto(w.rowData[offset + 8]) > 0 || parseMonto(w.rowData[offset + 8]) < 0) maxAdelantos = Math.max(maxAdelantos, 3); 
     });
     
     let thHtml = `
@@ -843,29 +845,29 @@ function renderSueldos() {
                     let h = parseFloat(hVal);
                     let p = parseFloat(iPh.value);
                     if (!isNaN(h) && !isNaN(p) && h > 0 && p > 0) {
-                        iSue.value = (h * p).toFixed(2);
+                        iSue.value = "-" + (h * p).toFixed(2); // Calculadora autocompleta con signo menos
                     }
                 };
                 iHor.addEventListener('input', autoCalc);
                 iPh.addEventListener('input', autoCalc);
             }
         } else {
-            let methodStr = "-"; const valE = parseMonto(rData[offset+10]); const valT = parseMonto(rData[offset+11]); 
+            let methodStr = "-"; const valE = Math.abs(parseMonto(rData[offset+10])); const valT = Math.abs(parseMonto(rData[offset+11])); 
             if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)}<br>Trans: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
             
             let rowHtml = `
                 <td class="text-left" style="font-weight:600;">${nombreAmostrar || '-'}</td>
-                <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(parseMonto(rData[offset+13]))}</td>
+                <td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(Math.abs(parseMonto(rData[offset+13])))}</td>
                 <td class="text-left">${formatDateToAR(rData[offset+12]) || '-'}</td>
                 <td class="text-left">${rData[offset+1] || MESES_NOMBRES[month]}</td>`;
                 
-            if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+4]))}</td><td class="text-left">${formatDateToAR(rData[offset+5]) || '-'}</td>`;
-            if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+6]))}</td><td class="text-left">${formatDateToAR(rData[offset+7]) || '-'}</td>`;
-            if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+8]))}</td><td class="text-left">${formatDateToAR(rData[offset+9]) || '-'}</td>`;
+            if (maxAdelantos >= 1) rowHtml += `<td class="text-right">${formatArgentineCurrency(Math.abs(parseMonto(rData[offset+4])))}</td><td class="text-left">${formatDateToAR(rData[offset+5]) || '-'}</td>`;
+            if (maxAdelantos >= 2) rowHtml += `<td class="text-right">${formatArgentineCurrency(Math.abs(parseMonto(rData[offset+6])))}</td><td class="text-left">${formatDateToAR(rData[offset+7]) || '-'}</td>`;
+            if (maxAdelantos === 3) rowHtml += `<td class="text-right">${formatArgentineCurrency(Math.abs(parseMonto(rData[offset+8])))}</td><td class="text-left">${formatDateToAR(rData[offset+9]) || '-'}</td>`;
             
             rowHtml += `
                 <td class="text-left" style="font-size: 8.5pt;">${methodStr}</td>
-                <td class="text-right">${formatArgentineCurrency(parseMonto(rData[offset+3]))}</td>
+                <td class="text-right">${formatArgentineCurrency(Math.abs(parseMonto(rData[offset+3])))}</td>
                 <td class="text-center">${rData[offset+2] || '-'}</td>`; 
                 
             tr.innerHTML = rowHtml;
@@ -935,6 +937,8 @@ async function saveSueldos() {
             finalRowData[offset+10] = getVal('.s-me'); 
             finalRowData[offset+11] = getVal('.s-mt'); 
             finalRowData[offset+12] = getValDate('.s-fp', tr) || finalRowData[offset+12]; 
+            
+            // Leemos el sueldo tal cual lo tipeó el usuario
             finalRowData[offset+13] = getVal('.s-sue'); 
             
             await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: finalRowData } }) }); 
