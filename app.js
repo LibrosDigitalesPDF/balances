@@ -369,12 +369,28 @@ function renderBalance() {
     
     Object.keys(appState.balances.gastos).forEach(s => {
         const pd = appState.balances.gastos[s]?.[pk]; if (!pd || pd.length === 0) return; let ct = 0; let rh = "";
-        pd.forEach(m => { const a = Math.abs(m.monto); ct += a; mc++; rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; }); tg += ct;
+        const isSueldos = (s === "Sueldos");
+        
+        pd.forEach(m => { 
+            const a = Math.abs(m.monto); ct += a; mc++; 
+            if (isSueldos) {
+                rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`;
+            } else {
+                rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`;
+            }
+        }); 
+        tg += ct;
+        
+        const theadHtml = isSueldos 
+            ? `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th></tr>` 
+            : `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr>`;
+            
         const ac = document.createElement("div"); ac.className = "accordion-item";
-        ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">${s}</span></div><span class="item-val">${formatArgentineCurrency(ct)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0; border:none;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead><tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr></thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="3" class="text-right">TOTAL PESTAÑA</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`;
+        ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">${s}</span></div><span class="item-val">${formatArgentineCurrency(ct)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0; border:none;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead>${theadHtml}</thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="${isSueldos ? '2' : '3'}" class="text-right">TOTAL PESTAÑA</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`;
         gList.appendChild(ac);
     });
     document.getElementById("total-gastos-value").textContent = formatArgentineCurrency(tg); setupAccordions(gList);
+    
     const iList = document.getElementById("ingresos-list"); iList.innerHTML = ""; const id = appState.balances.ingresos["Ingresos"]?.[pk];
     if (id && id.length > 0) {
         let rh = ""; let ct = 0;
@@ -412,8 +428,10 @@ function openHistoryView(s, t, b) {
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     
-    const m = appState.selectedMonth; 
-    const y = appState.selectedYear;
+    // Mes en curso por defecto
+    const today = new Date();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = String(today.getFullYear());
     document.getElementById("historial-month").value = m; 
     document.getElementById("historial-year").value = y; 
     appState.historyMonth = m; 
@@ -450,11 +468,21 @@ function openHistoryView(s, t, b) {
 }
 
 function renderHistoryTable() {
-    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; 
-    if (!s || !appState.balances || !appState.balances[t]) return;
+    const tbody = document.getElementById("historial-tbody"); 
+    tbody.innerHTML = ""; // Limpieza absoluta y rápida de la tabla anterior
+    let gt = 0; let fm = [];
     
-    const tm = appState.balances[t][s] || {}; 
-    const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
+    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; 
+    
+    // Si no hay datos, muestra vacío inmediatamente y no crashea
+    if (!s || !appState.balances || !appState.balances[t] || !appState.balances[t][s]) {
+        document.getElementById("historial-table").classList.add("hidden"); 
+        document.getElementById("historial-total-row").classList.add("hidden"); 
+        document.getElementById("historial-empty").classList.remove("hidden");
+        return;
+    }
+    
+    const tm = appState.balances[t][s];
 
     if (s !== "Sueldos") {
         const theadTr = document.getElementById("historial-thead-tr");
@@ -471,6 +499,7 @@ function renderHistoryTable() {
         if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; 
         if (tm[p]) fm = fm.concat(tm[p]); 
     }
+    
     if (fm.length === 0) { 
         document.getElementById("historial-table").classList.add("hidden"); 
         document.getElementById("historial-total-row").classList.add("hidden"); 
@@ -845,7 +874,7 @@ function renderSueldos() {
                     let h = parseFloat(hVal);
                     let p = parseFloat(iPh.value);
                     if (!isNaN(h) && !isNaN(p) && h > 0 && p > 0) {
-                        iSue.value = "-" + (h * p).toFixed(2); // Calculadora autocompleta con signo menos
+                        iSue.value = "-" + (h * p).toFixed(2);
                     }
                 };
                 iHor.addEventListener('input', autoCalc);
@@ -937,8 +966,6 @@ async function saveSueldos() {
             finalRowData[offset+10] = getVal('.s-me'); 
             finalRowData[offset+11] = getVal('.s-mt'); 
             finalRowData[offset+12] = getValDate('.s-fp', tr) || finalRowData[offset+12]; 
-            
-            // Leemos el sueldo tal cual lo tipeó el usuario
             finalRowData[offset+13] = getVal('.s-sue'); 
             
             await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: finalRowData } }) }); 
