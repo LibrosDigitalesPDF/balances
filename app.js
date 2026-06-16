@@ -16,7 +16,7 @@ const LOADER_PHASES = [
 let appState = {
     balances: null, carpetas: {}, proveedores: [], sueldos: {}, 
     selectedMonth: "", selectedYear: "",
-    historyMonth: "ALL", historyYear: "ALL",
+    historyMonth: "", historyYear: "",
     sueldosMonth: "", sueldosYear: "", 
     sueldosEditMode: false, proveedoresEditMode: false, historialEditMode: false,
     currentHistorySheet: null, currentHistoryType: null,
@@ -95,11 +95,11 @@ function initSelectors() {
     const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear());
     appState.selectedMonth = m; appState.selectedYear = y; 
     appState.sueldosMonth = m; appState.sueldosYear = y;
-    appState.historyMonth = "ALL"; appState.historyYear = "ALL";
+    appState.historyMonth = m; appState.historyYear = y;
     
     document.getElementById("select-month").value = m; document.getElementById("select-year").value = y;
     document.getElementById("sueldos-month").value = m; document.getElementById("sueldos-year").value = y;
-    document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL";
+    document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y;
 }
 
 function initTabs() {
@@ -116,9 +116,6 @@ function initTabs() {
     });
 }
 
-// -------------------------------------------------------------
-// INTEGRADOR AUTOMÁTICO DE SUELDOS
-// -------------------------------------------------------------
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
     appState.balances.gastos["Sueldos"] = {};
@@ -241,7 +238,6 @@ function setupEventListeners() {
         if(confirm(`¿Eliminar la cuenta '${appState.currentHistorySheet}'?`)) { sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet }); appState.currentHistorySheet = null; document.querySelector('.menu-btn[data-tab="balance"]').click(); }
     };
 
-    // Registrar Nueva Operación conectada con los inputs de comprobantes
     document.getElementById("btn-save-nueva-op").onclick = () => {
         const cuenta = document.getElementById("new-op-cuenta").value;
         const fecha = document.getElementById("new-op-fec").value;
@@ -251,7 +247,6 @@ function setupEventListeners() {
         const i21 = document.getElementById("new-op-i21").value;
         const i10 = document.getElementById("new-op-i10").value;
         const icont = document.getElementById("new-op-icont").value;
-        
         const cc = document.getElementById("new-op-comp-c") ? document.getElementById("new-op-comp-c").value : "";
         const cv = document.getElementById("new-op-comp-v") ? document.getElementById("new-op-comp-v").value : "";
 
@@ -361,7 +356,7 @@ function fetchFinancialData() {
 }
 
 // ==========================================
-// MÓDULO: BALANCES
+// MÓDULO: BALANCES E HISTORIAL
 // ==========================================
 function renderBalance() {
     if (!appState.balances) return;
@@ -402,7 +397,6 @@ function toggleHistorialEditMode(isEdit) {
     document.getElementById("btn-historial-edit-mode").classList.toggle("hidden", isEdit);
     document.getElementById("btn-historial-save").classList.toggle("hidden", !isEdit);
     document.getElementById("btn-historial-cancel").classList.toggle("hidden", !isEdit);
-    document.getElementById("btn-historial-add").classList.add("hidden"); 
     renderHistoryTable();
 }
 
@@ -414,14 +408,17 @@ function openHistoryView(s, t, b) {
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     
-    // Fuerza la barra a mostrar TODO al instante
-    document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL"; 
-    appState.historyMonth = "ALL"; appState.historyYear = "ALL";
+    // CORRECCIÓN: Filtro predeterminado AL MES EN CURSO, sin errores de renderizado.
+    const m = appState.selectedMonth; 
+    const y = appState.selectedYear;
+    document.getElementById("historial-month").value = m; 
+    document.getElementById("historial-year").value = y; 
+    appState.historyMonth = m; 
+    appState.historyYear = y;
     
     appState.historialEditMode = false;
     document.getElementById("btn-historial-save").classList.add("hidden");
     document.getElementById("btn-historial-cancel").classList.add("hidden");
-    document.getElementById("btn-historial-add").classList.add("hidden");
 
     const theadTr = document.getElementById("historial-thead-tr");
     
@@ -450,8 +447,12 @@ function openHistoryView(s, t, b) {
 }
 
 function renderHistoryTable() {
-    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances) return;
-    const tm = appState.balances[t][s]; const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
+    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; 
+    if (!s || !appState.balances || !appState.balances[t]) return;
+    
+    // BLINDAJE ANTICRASHEO: Si la cuenta está vacía no tira error, se adapta.
+    const tm = appState.balances[t][s] || {}; 
+    const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = [];
 
     if (s !== "Sueldos") {
         const theadTr = document.getElementById("historial-thead-tr");
@@ -462,9 +463,23 @@ function renderHistoryTable() {
             <th class="text-left">IVA Cont.</th>${extraCol}`;
     }
 
-    for (const p in tm) { const [y, month] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; if (tm[p]) fm = fm.concat(tm[p]); }
-    if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
-    else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); }
+    for (const p in tm) { 
+        const [y, month] = p.split("-"); 
+        if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; 
+        if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; 
+        if (tm[p]) fm = fm.concat(tm[p]); 
+    }
+    if (fm.length === 0) { 
+        document.getElementById("historial-table").classList.add("hidden"); 
+        document.getElementById("historial-total-row").classList.add("hidden"); 
+        document.getElementById("historial-empty").classList.remove("hidden"); 
+    } else { 
+        fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m)); }); 
+        document.getElementById("historial-table").classList.remove("hidden"); 
+        document.getElementById("historial-total-row").classList.remove("hidden"); 
+        document.getElementById("historial-empty").classList.add("hidden"); 
+        document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); 
+    }
 }
 
 function createBalanceRowHTML(m) {
@@ -554,7 +569,10 @@ async function saveHistorial() {
 window.triggerUpload = function(s, ri, ty, c) { appState.currentUpload = { sheetName: s, rowIndex: ri, type: ty, categoryType: c }; document.getElementById("global-file-input").click(); };
 
 function renderCarpetasSection(s) {
-    document.getElementById("carpetas-config-section").classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
+    const sec = document.getElementById("carpetas-config-section");
+    if(sec) sec.classList.remove("hidden"); 
+    
+    const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" };
     document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-";
     document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago;
     document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden"));
@@ -861,7 +879,6 @@ function toggleSueldosEditMode(isEdit) {
     document.getElementById("btn-sueldos-edit-mode").classList.toggle("hidden", isEdit); 
     document.getElementById("btn-sueldos-save").classList.toggle("hidden", !isEdit); 
     document.getElementById("btn-sueldos-cancel").classList.toggle("hidden", !isEdit); 
-    // Siempre mostrar "+ Nuevo Trabajador" en modo edición, aunque la tabla esté vacía
     document.getElementById("btn-sueldos-add").classList.toggle("hidden", !isEdit); 
     renderSueldos(); 
 }
