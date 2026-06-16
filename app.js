@@ -95,7 +95,7 @@ function initSelectors() {
     const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear());
     appState.selectedMonth = m; appState.selectedYear = y; 
     appState.sueldosMonth = m; appState.sueldosYear = y;
-    appState.historyMonth = "ALL"; appState.historyYear = "ALL"; // Restaurado a TODO EL AÑO por defecto
+    appState.historyMonth = "ALL"; appState.historyYear = "ALL";
     
     document.getElementById("select-month").value = m; document.getElementById("select-year").value = y;
     document.getElementById("sueldos-month").value = m; document.getElementById("sueldos-year").value = y;
@@ -193,7 +193,6 @@ function populateSidebarHistory() {
     const gList = document.getElementById("sidebar-gastos-list"); const iList = document.getElementById("sidebar-ingresos-list");
     gList.innerHTML = ""; iList.innerHTML = ""; if (!appState.balances) return;
     
-    // Eliminado el .sort() para respetar el orden original del Sheets
     Object.keys(appState.balances.gastos).forEach(sheet => {
         const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheet;
         btn.onclick = () => openHistoryView(sheet, "gastos", btn); gList.appendChild(btn);
@@ -216,7 +215,6 @@ function populateCuentasDropdown() {
     const optgroupG = document.createElement("optgroup");
     optgroupG.label = "GASTOS";
     
-    // Eliminado el .sort() para respetar el orden
     Object.keys(appState.balances.gastos).forEach(s => {
         if(s === "Sueldos") return; 
         const opt = document.createElement("option");
@@ -243,6 +241,7 @@ function setupEventListeners() {
         if(confirm(`¿Eliminar la cuenta '${appState.currentHistorySheet}'?`)) { sendGlobalPostRequest("BAL_DELETE_TAB", { sheetName: appState.currentHistorySheet }); appState.currentHistorySheet = null; document.querySelector('.menu-btn[data-tab="balance"]').click(); }
     };
 
+    // Registrar Nueva Operación conectada con los inputs de comprobantes
     document.getElementById("btn-save-nueva-op").onclick = () => {
         const cuenta = document.getElementById("new-op-cuenta").value;
         const fecha = document.getElementById("new-op-fec").value;
@@ -252,13 +251,16 @@ function setupEventListeners() {
         const i21 = document.getElementById("new-op-i21").value;
         const i10 = document.getElementById("new-op-i10").value;
         const icont = document.getElementById("new-op-icont").value;
+        
+        const cc = document.getElementById("new-op-comp-c") ? document.getElementById("new-op-comp-c").value : "";
+        const cv = document.getElementById("new-op-comp-v") ? document.getElementById("new-op-comp-v").value : "";
 
         if(!cuenta || !fecha || !mon) { alert("Complete cuenta de destino, fecha y monto para guardar."); return; }
 
         let isGasto = cuenta !== "Ingresos";
         if(isGasto && mon > 0) mon = -mon;
 
-        const payload = { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: "", idComprobantePago: "" };
+        const payload = { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: cc, idComprobantePago: cv };
         sendGlobalPostRequest("BAL_ADD", payload);
         document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = "");
         document.getElementById("new-op-cuenta").value = "";
@@ -366,7 +368,6 @@ function renderBalance() {
     const pk = `${appState.selectedYear}-${appState.selectedMonth}`; let tg = 0; let ti = 0; let mc = 0;
     const gList = document.getElementById("gastos-list"); gList.innerHTML = "";
     
-    // Eliminado .sort() para respetar orden original
     Object.keys(appState.balances.gastos).forEach(s => {
         const pd = appState.balances.gastos[s]?.[pk]; if (!pd || pd.length === 0) return; let ct = 0; let rh = "";
         pd.forEach(m => { const a = Math.abs(m.monto); ct += a; mc++; rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; }); tg += ct;
@@ -413,7 +414,7 @@ function openHistoryView(s, t, b) {
     
     appState.currentHistorySheet = s; appState.currentHistoryType = t;
     
-    // Devolvemos el filtro a TODO EL AÑO para que no pienses que se borraron
+    // Fuerza la barra a mostrar TODO al instante
     document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL"; 
     appState.historyMonth = "ALL"; appState.historyYear = "ALL";
     
@@ -661,7 +662,11 @@ window.openWebModal = function(rowIndex) {
     const link = document.getElementById('modal-web-link'); 
     const noWeb = document.getElementById('modal-no-web'); 
     if(prov.web && prov.web.trim() !== "") { 
-        link.href = prov.web.startsWith('http') ? prov.web : 'https://' + prov.web; 
+        let url = prov.web.trim();
+        if (!url.startsWith('http')) {
+            url = 'https://' + url;
+        }
+        link.href = url; 
         link.classList.remove('hidden'); 
         noWeb.classList.add('hidden'); 
         document.getElementById('modal-web-input').value = prov.web; 
@@ -707,7 +712,7 @@ async function saveProveedores() {
 }
 
 // ==========================================
-// MÓDULO: SUELDOS (Con Cálculo de Horas Automático)
+// MÓDULO: SUELDOS
 // ==========================================
 function renderSueldos() {
     const year = appState.sueldosYear; 
@@ -811,7 +816,6 @@ function renderSueldos() {
             tr.setAttribute("data-row-index", worker.rowIndex || "NEW"); 
             tr.innerHTML = rowHtml;
             
-            // MULTIPLICADOR AUTOMÁTICO DE HORAS Y PRECIO
             let iHor = tr.querySelector('.s-hor');
             let iPh = tr.querySelector('.s-ph');
             let iSue = tr.querySelector('.s-sue');
@@ -857,6 +861,7 @@ function toggleSueldosEditMode(isEdit) {
     document.getElementById("btn-sueldos-edit-mode").classList.toggle("hidden", isEdit); 
     document.getElementById("btn-sueldos-save").classList.toggle("hidden", !isEdit); 
     document.getElementById("btn-sueldos-cancel").classList.toggle("hidden", !isEdit); 
+    // Siempre mostrar "+ Nuevo Trabajador" en modo edición, aunque la tabla esté vacía
     document.getElementById("btn-sueldos-add").classList.toggle("hidden", !isEdit); 
     renderSueldos(); 
 }
