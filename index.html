@@ -317,42 +317,89 @@
         <aside class="sidebar">
             <nav class="sidebar-menu">
                 <button class="menu-btn active" data-tab="registro-sueldos"><span>Registro de Sueldos</span></button>
+                <button class="menu-btn" data-tab="adelantos"><span>Adelantos</span></button>
+                <button class="menu-btn" data-tab="liquidacion-sueldos"><span>Liquidación de Sueldos</span></button>
             </nav>
             <div class="sidebar-history"><h3 class="sidebar-heading">Gestión de RRHH</h3></div>
         </aside>
+        
         <main class="main-content full-width">
             <header class="main-header">
-                <div class="header-title"><h1>Liquidación de Sueldos</h1></div>
+                <div class="header-title"><h1>Nómina y Liquidación</h1></div>
             </header>
             <div class="view-container" style="display: flex; flex-direction: column; flex-grow: 1;">
-                <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
-                    <div class="selector-group" style="margin-bottom: 20px;">
-                        <div class="control-field">
-                            <label for="sueldos-month">Mes a liquidar</label>
-                            <select id="sueldos-month" class="form-control"><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>
-                        </div>
-                        <div class="control-field">
-                            <label for="sueldos-year">Año</label>
-                            <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-                        </div>
+                
+                <div class="selector-group" style="margin-bottom: 20px;">
+                    <div class="control-field">
+                        <label for="sueldos-month">Mes a liquidar</label>
+                        <select id="sueldos-month" class="form-control">
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
                     </div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                        <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Nómina Mensual</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="btn-sueldos-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Nuevo Trabajador</button>
-                            <button id="btn-sueldos-edit-mode" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Tabla</button>
-                            <button id="btn-sueldos-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
-                            <button id="btn-sueldos-cancel" class="btn btn-secondary hidden">Cancelar</button>
-                        </div>
+                    <div class="control-field">
+                        <label for="sueldos-year">Año</label>
+                        <select id="sueldos-year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select>
                     </div>
+                </div>
 
-                    <div id="sueldos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros de pago para este mes. Presione "Editar Tabla" para agregar sueldos.</div>
-                    
-                    <div class="table-responsive nowrap-table" id="sueldos-table-container" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
-                        <table class="data-table" id="sueldos-table"><thead id="sueldos-thead"></thead><tbody id="sueldos-tbody"></tbody></table>
+                <section id="view-registro-sueldos" class="tab-view active" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="padding-bottom: 16px; border-bottom: 2px solid var(--border-color); margin-bottom: 10px;">
+                        <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Registro Resumido Mensual</h3>
+                    </div>
+                    <div id="sueldos-reg-empty" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No hay registros de pago básicos para este mes.</div>
+                    <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <table class="data-table" id="sueldos-reg-table">
+                            <thead><tr><th class="text-left">Nombre</th><th class="text-right">Sueldo Final</th><th class="text-left">Fecha de Pago</th><th class="text-left">Método Pago</th></tr></thead>
+                            <tbody id="sueldos-reg-tbody"></tbody>
+                        </table>
                     </div>
                 </section>
+
+                <section id="view-adelantos" class="tab-view" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Gestión de Adelantos</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-adelantos-add" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Agregar Adelanto</button>
+                            <button id="btn-adelantos-edit" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Adelantos</button>
+                            <button id="btn-adelantos-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
+                            <button id="btn-adelantos-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                        </div>
+                    </div>
+                    <div id="adelantos-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen trabajadores activos para este mes. Agregue un trabajador desde la Liquidación.</div>
+                    <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <table class="data-table" id="adelantos-table">
+                            <thead id="adelantos-thead"></thead>
+                            <tbody id="adelantos-tbody"></tbody>
+                            <tfoot id="adelantos-tfoot"></tfoot>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="view-liquidacion-sueldos" class="tab-view" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Liquidación Detallada</h3>
+                        <div style="display: flex; gap: 10px; flex-wrap:wrap;">
+                            <button id="btn-liq-add-worker" class="btn hidden" style="border: 1px solid var(--primary-color); color: var(--primary-color);">+ Trabajador</button>
+                            <button id="btn-liq-add-plus" class="btn hidden" style="border: 1px solid var(--success-color); color: var(--success-color);">+ Plus</button>
+                            <button id="btn-liq-add-debito" class="btn hidden" style="border: 1px solid var(--danger-color); color: var(--danger-color);">- Débito</button>
+                            <button id="btn-liq-add-aguinaldo" class="btn hidden" style="border: 1px solid var(--warning-color); color: var(--warning-color);">+ Aguinaldo</button>
+                            <button id="btn-liq-edit" class="btn" style="background-color: var(--primary-color); color: white; border: none;">Editar Liquidación</button>
+                            <button id="btn-liq-save" class="btn hidden" style="background-color: var(--success-color); color: white; border: none;">Guardar Cambios</button>
+                            <button id="btn-liq-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                        </div>
+                    </div>
+                    <div id="liq-empty-state" class="alert alert-info hidden" style="text-align: center; padding: 40px;">No existen registros para liquidar en este mes. Presione "Editar" y agregue un trabajador.</div>
+                    <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+                        <table class="data-table" id="liq-table">
+                            <thead id="liq-thead"></thead>
+                            <tbody id="liq-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
             </div>
         </main>
     </div>
