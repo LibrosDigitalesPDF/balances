@@ -1,5 +1,5 @@
 // ==========================================
-// CONFIGURACIÓN Y ESTADO GLOBAL (MOLDE 24 COLS)
+// CONFIGURACIÓN Y ESTADO GLOBAL
 // ==========================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
 const MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -102,24 +102,29 @@ function initTabs() {
         btn.addEventListener("click", () => {
             document.querySelectorAll("#module-sueldos .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
             appState.activeSueldosTab = btn.getAttribute("data-tab");
-            document.querySelectorAll("#module-sueldos .tab-view").forEach(view => view.classList.toggle("active", view.id === `view-${appState.activeSueldosTab}`));
+            
+            // Si estaba viendo un historial, lo oculta para mostrar las pestañas normales
+            const histView = document.getElementById("view-historial-trabajador");
+            if (histView) histView.classList.remove("active");
+
+            document.querySelectorAll("#module-sueldos .tab-view").forEach(view => {
+                if (view.id !== "view-historial-trabajador") view.classList.toggle("active", view.id === `view-${appState.activeSueldosTab}`);
+            });
             window.renderSueldos();
         });
     });
 }
 
 function setupEventListeners() {
-    // Balances
     document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
     document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
     document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
     document.getElementById("historial-year").onchange = (e) => { appState.historyYear = e.target.value; renderHistoryTable(); };
 
-    // Botones Globales
     if(document.getElementById("btn-save-nueva-op")) {
         document.getElementById("btn-save-nueva-op").onclick = () => {
             const cuenta = document.getElementById("new-op-cuenta").value; const fecha = document.getElementById("new-op-fec").value; const det = document.getElementById("new-op-det").value; let mon = parseMonto(document.getElementById("new-op-mon").value); const ope = document.getElementById("new-op-ope").value; const i21 = document.getElementById("new-op-i21").value; const i10 = document.getElementById("new-op-i10").value; const icont = document.getElementById("new-op-icont").value; const cc = document.getElementById("new-op-comp-c") ? document.getElementById("new-op-comp-c").value : ""; const cv = document.getElementById("new-op-comp-v") ? document.getElementById("new-op-comp-v").value : "";
-            if(!cuenta || !fecha || !mon) { alert("Complete cuenta de destino, fecha y monto para guardar."); return; }
+            if(!cuenta || !fecha || !mon) { alert("Complete cuenta, fecha y monto para guardar."); return; }
             let isGasto = cuenta !== "Ingresos"; if(isGasto && mon > 0) mon = -mon;
             const payload = { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: cc, idComprobantePago: cv };
             sendGlobalPostRequest("BAL_ADD", payload); document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = ""); document.getElementById("new-op-cuenta").value = "";
@@ -130,23 +135,19 @@ function setupEventListeners() {
     if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
     if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").onclick = () => saveHistorial();
 
-    // Proveedores
     document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); appState.activeProvTab = btn.getAttribute("data-prov-tab"); const titles = { "gen": "Datos generales del proveedor", "ban": "Información bancaria y transferencias", "con": "Teléfono, correo y portal web" }; document.getElementById("prov-tab-subtitle").textContent = titles[appState.activeProvTab]; renderProveedores(); }; });
     if(document.getElementById("btn-proveedores-edit-mode")) document.getElementById("btn-proveedores-edit-mode").onclick = () => toggleProveedoresEditMode(true);
     if(document.getElementById("btn-proveedores-cancel")) document.getElementById("btn-proveedores-cancel").onclick = () => toggleProveedoresEditMode(false);
     if(document.getElementById("btn-proveedores-save")) document.getElementById("btn-proveedores-save").onclick = () => saveProveedores();
 
-    // Sueldos: Clics FIRMES para asegurar que entren en modo edición
     if(document.getElementById("sueldos-month")) document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; window.renderSueldos(); };
     if(document.getElementById("sueldos-year")) document.getElementById("sueldos-year").onchange = (e) => { const newYear = e.target.value; appState.sueldosYear = newYear; if (!appState.sueldos[newYear]) { if (confirm(`El año ${newYear} no tiene registros de RRHH.\n\n¿Desea inicializar este año automáticamente?`)) { sendGlobalPostRequest("SUELDO_INIT_YEAR", { year: newYear }); } else { window.renderSueldos(); } } else { window.renderSueldos(); } };
     
-    // Adelantos
     if(document.getElementById("btn-adelantos-edit")) document.getElementById("btn-adelantos-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
     if(document.getElementById("btn-adelantos-cancel")) document.getElementById("btn-adelantos-cancel").onclick = () => { appState.sueldosEditMode = false; window.renderSueldos(); };
     if(document.getElementById("btn-adelantos-save")) document.getElementById("btn-adelantos-save").onclick = () => window.saveSueldos();
-    if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").onclick = () => { if(appState.sueldosVisibleAdelantos < 5) { appState.sueldosVisibleAdelantos++; window.renderSueldos(); } else { alert("Límite máximo de 5 adelantos alcanzado."); } };
+    if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").onclick = () => { if(appState.sueldosVisibleAdelantos < 5) { appState.sueldosVisibleAdelantos++; window.renderSueldos(); } else { alert("Límite máximo de 5 adelantos."); } };
 
-    // Liquidación
     if(document.getElementById("btn-liq-edit")) document.getElementById("btn-liq-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
     if(document.getElementById("btn-liq-cancel")) document.getElementById("btn-liq-cancel").onclick = () => { appState.sueldosEditMode = false; appState.sueldosShowPlus=false; appState.sueldosShowDebito=false; appState.sueldosShowAguinaldo=false; window.renderSueldos(); };
     if(document.getElementById("btn-liq-save")) document.getElementById("btn-liq-save").onclick = () => window.saveSueldos();
@@ -167,27 +168,48 @@ function setupEventListeners() {
             }; reader.readAsDataURL(file);
         };
     }
-
-    // Modal Web Proveedores
-    if(document.getElementById('btn-modal-close')) document.getElementById('btn-modal-close').onclick = () => document.getElementById('web-modal').classList.add('hidden');
-    if(document.getElementById('btn-modal-cancel')) document.getElementById('btn-modal-cancel').onclick = () => window.openWebModal(appState.activeProvRowIndex);
-    if(document.getElementById('btn-modal-edit')) {
-        document.getElementById('btn-modal-edit').onclick = function() { document.getElementById('web-view-mode').classList.add('hidden'); document.getElementById('web-edit-mode').classList.remove('hidden'); this.classList.add('hidden'); document.getElementById('btn-modal-save').classList.remove('hidden'); document.getElementById('btn-modal-cancel').classList.remove('hidden'); };
-    }
-    if(document.getElementById('btn-modal-save')) {
-        document.getElementById('btn-modal-save').onclick = function() { const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex); if (prov) { prov.web = document.getElementById('modal-web-input').value; sendGlobalPostRequest("PROV_EDIT", prov); document.getElementById('web-modal').classList.add('hidden'); } };
-    }
 }
 
-// ==========================================
-// DESCARGA Y DISTRIBUCIÓN DE DATOS
-// ==========================================
+function injectSueldosIntoBalances() {
+    if (!appState.balances) return;
+    appState.balances.gastos["Sueldos"] = {};
+    const gastosSueldos = appState.balances.gastos["Sueldos"];
+
+    Object.keys(appState.sueldos).forEach(year => {
+        appState.sueldos[year].forEach((worker, wIndex) => {
+            const rData = worker.rowData;
+            for (let m = 0; m < 12; m++) {
+                const offset = m * COLS_PER_MONTH; const nombre = rData[offset] || rData[0]; if (!nombre || nombre === "-") continue;
+                const monthStr = String(m + 1).padStart(2, '0'); const periodKey = `${year}-${monthStr}`;
+                if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
+                let methodStr = "-"; const valE = Math.abs(parseMonto(rData[offset+19])); const valT = Math.abs(parseMonto(rData[offset+20]));
+                if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf."; else if (valE > 0) methodStr = "Efectivo"; else if (valT > 0) methodStr = "Transferencia";
+                const sueldoNum = Math.abs(parseMonto(rData[offset+22])); const fechaRawSueldo = rData[offset+21];
+                if (sueldoNum > 0) {
+                    gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${m}_SF`, fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${year}`, detalle: nombre, monto: -sueldoNum, mes: MESES_NOMBRES[m], metodoPago: methodStr, precioHora: rData[offset+3] || "-", horas: rData[offset+2] || "-", operacion: "Sueldo Final", isVirtual: true });
+                }
+                for (let a = 0; a < 5; a++) {
+                    let adMonto = Math.abs(parseMonto(rData[offset + 4 + (a*2)]));
+                    if (adMonto > 0) {
+                        gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${m}_A${a+1}`, fecha: formatDateToAR(rData[offset + 5 + (a*2)]) || `01/${monthStr}/${year}`, detalle: `${nombre} (Adelanto ${a+1})`, monto: -adMonto, mes: MESES_NOMBRES[m], metodoPago: methodStr, precioHora: "-", horas: "-", operacion: `Adelanto ${a+1}`, isVirtual: true });
+                    }
+                }
+            }
+        });
+    });
+}
+
 function fetchFinancialData() {
     toggleLoader(true);
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
-            injectSueldosIntoBalances(); populateCuentasDropdown(); renderBalance(); renderProveedores();
+            injectSueldosIntoBalances(); 
+            
+            // ESTA LÍNEA RESTAURA LAS PESTAÑAS DE BALANCES QUE FALTABAN
+            populateSidebarHistory(); 
+            
+            populateCuentasDropdown(); renderBalance(); renderProveedores();
             if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
             if (appState.currentHistorySheet) { renderHistoryTable(); if (appState.currentHistorySheet !== "Sueldos") renderCarpetasSection(appState.currentHistorySheet); }
@@ -199,7 +221,9 @@ function fetchFinancialDataSilent() {
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
-            injectSueldosIntoBalances(); if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
+            injectSueldosIntoBalances(); 
+            populateSidebarHistory(); // Se refresca silenciosamente
+            if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
         }
     });
 }
@@ -207,7 +231,7 @@ function fetchFinancialDataSilent() {
 function sendGlobalPostRequest(action, dataObj) { toggleLoader(true, "Procesando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) }).then(res => res.json()).then(res => { if (res.status === "success") fetchFinancialData(); else { alert("Error"); toggleLoader(false); } }).catch(() => toggleLoader(false)); }
 
 // ==========================================
-// MÓDULO: SUELDOS (DISEÑO MINIMALISTA Y CÁLCULOS)
+// MÓDULO: SUELDOS (LOGICA DE VISTAS, EXCEL MINIMALISTA Y HISTORIAL EN PANTALLA)
 // ==========================================
 
 function populateWorkerHistory() {
@@ -229,48 +253,70 @@ function populateWorkerHistory() {
     
     Array.from(uniqueWorkers).sort().forEach(nw => {
         let div = document.createElement("div");
-        div.style.padding = "10px 15px"; div.style.fontSize = "9.5pt";
+        div.style.padding = "10px 15px"; 
+        div.style.fontSize = "9.5pt";
         div.style.borderBottom = "1px solid var(--border-color)";
         div.style.color = "var(--text-secondary)";
         div.style.cursor = "pointer";
         div.style.transition = "background 0.2s";
         div.textContent = nw;
-        div.onmouseover = () => div.style.background = "var(--bg-hover, rgba(0,0,0,0.05))";
-        div.onmouseout = () => div.style.background = "transparent";
-        div.onclick = () => openWorkerHistoryModal(nw);
+        div.onclick = () => showWorkerHistoryInMain(nw);
         list.appendChild(div);
     });
 }
 
-function openWorkerHistoryModal(name) {
-    let modal = document.getElementById('worker-history-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'worker-history-modal';
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width: 800px; width: 95%;">
-                <h3 class="section-title text-left" style="margin-bottom: 5px;">Historial de Liquidaciones</h3>
-                <p id="worker-modal-name" style="margin-bottom: 15px; font-weight: 600; color: var(--primary-color); font-size: 14pt;"></p>
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                    <table class="data-table">
-                        <thead><tr><th class="text-left">Año</th><th class="text-left">Mes</th><th class="text-center">Hs</th><th class="text-right">P/Hr</th><th class="text-right">Adelantos</th><th class="text-right">Plus/Agui</th><th class="text-right">Sueldo Final</th><th class="text-left">F. Pago</th></tr></thead>
-                        <tbody id="worker-modal-tbody"></tbody>
-                    </table>
-                </div>
-                <div class="modal-footer action-buttons" style="justify-content: flex-end; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                    <button class="action-btn btn-secondary" onclick="document.getElementById('worker-history-modal').classList.add('hidden')">Cerrar Historial</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
+function showWorkerHistoryInMain(name) {
+    // Desactivamos temporalmente las subpestañas normales y sus botones activos
+    document.querySelectorAll("#module-sueldos .tab-view").forEach(v => v.classList.remove("active"));
+    document.querySelectorAll("#module-sueldos .menu-btn").forEach(b => b.classList.remove("active"));
+    
+    let viewHist = document.getElementById("view-historial-trabajador");
+    if (!viewHist) {
+        viewHist = document.createElement("section");
+        viewHist.id = "view-historial-trabajador";
+        viewHist.className = "tab-view";
+        const container = document.querySelector("#module-sueldos .view-container");
+        if (container) container.appendChild(viewHist);
     }
-
-    document.getElementById('worker-modal-name').textContent = name;
-    const tbody = document.getElementById('worker-modal-tbody');
-    tbody.innerHTML = "";
-
+    
+    viewHist.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); margin-bottom: 20px;">
+            <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Historial General: <span style="color:var(--primary-color);">${name}</span></h3>
+            <button id="btn-back-from-hist" class="btn btn-secondary" style="padding: 6px 12px; font-size: 9.5pt;">← Volver</button>
+        </div>
+        <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="text-left">Año</th>
+                        <th class="text-left">Mes</th>
+                        <th class="text-center">Horas</th>
+                        <th class="text-right">Precio/Hr</th>
+                        <th class="text-right">Adelantos</th>
+                        <th class="text-right">Plus</th>
+                        <th class="text-right">Débito</th>
+                        <th class="text-right">Aguinaldo</th>
+                        <th class="text-right">Sueldo Final</th>
+                        <th class="text-left">F. Pago</th>
+                    </tr>
+                </thead>
+                <tbody id="worker-main-hist-tbody"></tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById("btn-back-from-hist").onclick = () => {
+        viewHist.classList.remove("active");
+        const activeBtn = document.querySelector(`#module-sueldos .menu-btn[data-tab="${appState.activeSueldosTab}"]`);
+        if (activeBtn) activeBtn.classList.add("active");
+        const activeSection = document.getElementById(`view-${appState.activeSueldosTab}`);
+        if (activeSection) activeSection.classList.add("active");
+        window.renderSueldos();
+    };
+    
+    const tbody = document.getElementById("worker-main-hist-tbody");
     let historyData = [];
+    
     Object.keys(appState.sueldos).forEach(year => {
         appState.sueldos[year].forEach(w => {
             for (let m = 0; m < 12; m++) {
@@ -278,33 +324,56 @@ function openWorkerHistoryModal(name) {
                 const wName = w.rowData[offset] || w.rowData[0];
                 if (wName && wName.toString().trim().toLowerCase() === name.toLowerCase()) {
                     const r = w.rowData;
-                    let sumAd = 0; for(let a=0;a<5;a++) sumAd += Math.abs(parseMonto(r[offset+4+(a*2)]));
-                    let plusAgui = Math.abs(parseMonto(r[offset+14])) + Math.abs(parseMonto(r[offset+18])) - Math.abs(parseMonto(r[offset+16]));
+                    let sumAd = 0; for(let a=0; a<5; a++) sumAd += Math.abs(parseMonto(r[offset+4+(a*2)]));
+                    let pl = Math.abs(parseMonto(r[offset+14]));
+                    let db = Math.abs(parseMonto(r[offset+16]));
+                    let ag = Math.abs(parseMonto(r[offset+18]));
                     let final = Math.abs(parseMonto(r[offset+22]));
-                    let hs = r[offset+2] || '-'; let ph = parseMonto(r[offset+3]); let fp = formatDateToAR(r[offset+21]) || '-';
-                    if (hs !== '-' || final > 0 || sumAd > 0 || plusAgui !== 0) {
-                        historyData.push({ year: year, monthStr: MESES_NOMBRES[m], monthIdx: m, hs: hs, ph: ph, sumAd: sumAd, plusAgui: plusAgui, final: final, fp: fp });
+                    let hs = r[offset+2] || '-';
+                    let ph = parseMonto(r[offset+3]);
+                    let fp = formatDateToAR(r[offset+21]) || '-';
+                    
+                    if (hs !== '-' || final > 0 || sumAd > 0 || pl > 0 || db > 0 || ag > 0) {
+                        historyData.push({ year, monthStr: MESES_NOMBRES[m], monthIdx: m, hs, ph, sumAd, pl, db, ag, final, fp });
                     }
                 }
             }
         });
     });
-
-    historyData.sort((a, b) => { if (b.year !== a.year) return b.year - a.year; return b.monthIdx - a.monthIdx; });
-    if (historyData.length === 0) { tbody.innerHTML = `<tr><td colspan="8" class="text-center">No hay registros para este trabajador.</td></tr>`; } 
-    else {
+    
+    historyData.sort((a, b) => b.year !== a.year ? b.year - a.year : b.monthIdx - a.monthIdx);
+    
+    if (historyData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay registros para este trabajador.</td></tr>`;
+    } else {
         historyData.forEach(d => {
-            tbody.innerHTML += `<tr><td>${d.year}</td><td>${d.monthStr}</td><td class="text-center">${d.hs}</td><td class="text-right">${formatArgentineCurrency(d.ph)}</td><td class="text-right text-danger">${d.sumAd > 0 ? "-"+formatArgentineCurrency(d.sumAd) : '-'}</td><td class="text-right text-success">${d.plusAgui !== 0 ? formatArgentineCurrency(d.plusAgui) : '-'}</td><td class="text-right" style="font-weight:bold; color:var(--primary-color);">${formatArgentineCurrency(d.final)}</td><td>${d.fp}</td></tr>`;
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${d.year}</b></td>
+                    <td>${d.monthStr}</td>
+                    <td class="text-center">${d.hs}</td>
+                    <td class="text-right">${formatArgentineCurrency(d.ph)}</td>
+                    <td class="text-right text-danger">${d.sumAd > 0 ? "-"+formatArgentineCurrency(d.sumAd) : '-'}</td>
+                    <td class="text-right text-success">${d.pl > 0 ? "+"+formatArgentineCurrency(d.pl) : '-'}</td>
+                    <td class="text-right text-danger">${d.db > 0 ? "-"+formatArgentineCurrency(d.db) : '-'}</td>
+                    <td class="text-right text-warning">${d.ag > 0 ? "+"+formatArgentineCurrency(d.ag) : '-'}</td>
+                    <td class="text-right" style="font-weight:700; color:var(--primary-color);">${formatArgentineCurrency(d.final)}</td>
+                    <td>${d.fp}</td>
+                </tr>
+            `;
         });
     }
-    modal.classList.remove('hidden');
+    viewHist.classList.add("active");
 }
 
 window.renderSueldos = function() {
     populateWorkerHistory();
-    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * COLS_PER_MONTH;
+    const year = appState.sueldosYear; 
+    const month = parseInt(appState.sueldosMonth) - 1; 
+    const offset = month * COLS_PER_MONTH;
     
-    const toggleBtn = document.getElementById("toggle-sueldos-sidebar"); const sidebar = document.getElementById("sueldos-sidebar");
+    const toggleBtn = document.getElementById("toggle-sueldos-sidebar"); 
+    const sidebar = document.getElementById("sueldos-sidebar");
     if (toggleBtn && sidebar) { toggleBtn.onclick = () => sidebar.classList.toggle("collapsed"); }
     
     if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").classList.toggle("hidden", !appState.sueldosEditMode);
@@ -319,6 +388,8 @@ window.renderSueldos = function() {
     if(document.getElementById("btn-liq-cancel")) document.getElementById("btn-liq-cancel").classList.toggle("hidden", !appState.sueldosEditMode);
     if(document.getElementById("btn-liq-edit")) document.getElementById("btn-liq-edit").classList.toggle("hidden", appState.sueldosEditMode);
 
+    if (document.getElementById("view-historial-trabajador") && document.getElementById("view-historial-trabajador").classList.contains("active")) return;
+
     let yearData = appState.sueldos[year] || []; 
     let activeWorkers = yearData.filter(worker => { 
         const dataMes = worker.rowData.slice(offset, offset + COLS_PER_MONTH); 
@@ -329,7 +400,6 @@ window.renderSueldos = function() {
     
     activeWorkers.sort((a, b) => { const nameA = (a.rowData[offset] || a.rowData[0] || "").toString().toLowerCase(); const nameB = (b.rowData[offset] || b.rowData[0] || "").toString().toLowerCase(); return nameA.localeCompare(nameB); });
 
-    // ESCRITURA NATURAL: Fila vacía al final para agregar fácilmente
     if (appState.sueldosEditMode) {
         let emptyRowData = Array(TOTAL_COLS).fill(""); emptyRowData[offset + 1] = MESES_NOMBRES[month];
         activeWorkers.push({ rowIndex: "NEW_NATURAL", rowData: emptyRowData });
@@ -415,16 +485,30 @@ window.renderSueldos = function() {
                 rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-mt" value="${Math.abs(parseMonto(r[offset+20])) || ''}" style="width:80px; text-align:center;"></td>`;
                 rowH += `<td><input type="text" class="sueldos-minimal-input s-fp" data-raw="${r[offset+21] || ''}" value="${formatDateToAR(r[offset+21])}" placeholder="DD/MM/AA" style="width:90px;"></td>`;
                 
-                if (w.rowIndex === "NEW_NATURAL") { rowH += `<td class="action-buttons sticky-col"><span style="font-size:8pt; color:var(--text-secondary);">Nuevo</span></td>`; } 
-                else { rowH += `<td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="window.archiveWorker(this, ${w.rowIndex})" style="padding: 2px 6px;">Borrar</button></td>`; }
+                if (w.rowIndex === "NEW_NATURAL") {
+                    rowH += `<td class="action-buttons sticky-col"><span style="font-size:8pt; color:var(--text-secondary);">Nuevo</span></td>`;
+                } else {
+                    rowH += `<td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="window.archiveWorker(this, ${w.rowIndex})" style="padding: 2px 6px;">Borrar</button></td>`;
+                }
                 tr.innerHTML = rowH;
                 
                 const calcFinal = () => {
-                    let h = parseFloat((tr.querySelector('.s-hor').value || "0").toString().replace(',','.')) || 0; let p = parseFloat(tr.querySelector('.s-ph').value) || 0; let ad = parseFloat(tr.querySelector('.val-adelantos').getAttribute('data-val')) || 0; let pl = tr.querySelector('.s-plus') ? (parseFloat(tr.querySelector('.s-plus').value) || 0) : 0; let de = tr.querySelector('.s-deb') ? (parseFloat(tr.querySelector('.s-deb').value) || 0) : 0; let ag = tr.querySelector('.s-agui') ? (parseFloat(tr.querySelector('.s-agui').value) || 0) : 0;
-                    let final = (h * p) - ad + pl - de + ag; tr.querySelector('.s-sue').value = final > 0 ? final.toFixed(2) : "";
+                    let h = parseFloat((tr.querySelector('.s-hor').value || "0").toString().replace(',','.')) || 0;
+                    let p = parseFloat(tr.querySelector('.s-ph').value) || 0;
+                    let ad = parseFloat(tr.querySelector('.val-adelantos').getAttribute('data-val')) || 0;
+                    let pl = tr.querySelector('.s-plus') ? (parseFloat(tr.querySelector('.s-plus').value) || 0) : 0;
+                    let de = tr.querySelector('.s-deb') ? (parseFloat(tr.querySelector('.s-deb').value) || 0) : 0;
+                    let ag = tr.querySelector('.s-agui') ? (parseFloat(tr.querySelector('.s-agui').value) || 0) : 0;
+                    
+                    let final = (h * p) - ad + pl - de + ag;
+                    tr.querySelector('.s-sue').value = final > 0 ? final.toFixed(2) : "";
                 };
                 tr.querySelectorAll('.calc-trig').forEach(i => i.addEventListener('input', calcFinal));
+                
             } else {
+                let methodStr = "-"; const valE = Math.abs(parseMonto(r[offset+19])); const valT = Math.abs(parseMonto(r[offset+20])); 
+                if (valE > 0 && valT > 0) methodStr = `E: ${formatArgentineCurrency(valE)}<br>T: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efvo`; else if (valT > 0) methodStr = `Transf`;
+                
                 let rowH = `<td style="font-weight:600;">${nom}</td><td class="text-center">${r[offset+2] || '-'}</td><td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+3]))}</td>`;
                 if (hasAdelantos) rowH += `<td class="text-right">${sumAdelantos > 0 ? formatArgentineCurrency(sumAdelantos) : '-'}</td>`;
                 if (showPlus) rowH += `<td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+14]))}</td><td class="text-left" style="font-size:8.5pt;">${r[offset+15]||'-'}</td>`;
@@ -438,54 +522,47 @@ window.renderSueldos = function() {
     }
 }
 
-window.archiveWorker = function(btn, rowIndex) { 
-    if(!confirm("¿Quitar trabajador de la liquidación de ESTE MES?")) return; 
-    const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * COLS_PER_MONTH; 
-    let worker = appState.sueldos[year].find(w => w.rowIndex === rowIndex); if (!worker) return; 
-    for (let i = offset; i < offset + COLS_PER_MONTH; i++) worker.rowData[i] = ""; 
-    fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_ROW", data: { year: year, rowIndex: rowIndex, rowData: worker.rowData } }) }).then(() => fetchFinancialDataSilent()); 
-    btn.closest("tr").remove();
-};
-
-window.saveSueldos = async function() {
-    const tab = appState.activeSueldosTab; const tbodyId = tab === "adelantos" ? "adelantos-tbody" : "liq-tbody"; const tbody = document.getElementById(tbodyId); if(!tbody) return;
-    const rows = tbody.querySelectorAll("tr"); const year = appState.sueldosYear; const month = parseInt(appState.sueldosMonth) - 1; const offset = month * COLS_PER_MONTH; 
-    let batchRows = [];
-    for (let tr of rows) { 
-        let rowIndex = tr.getAttribute("data-row-index"); const isNaturalAdd = (rowIndex === "NEW_NATURAL"); if (isNaturalAdd) rowIndex = null; else rowIndex = parseInt(rowIndex); 
-        let workerObj = null; if (rowIndex) workerObj = appState.sueldos[year].find(w => w.rowIndex === rowIndex); 
-        let finalRowData = workerObj ? [...workerObj.rowData] : Array(TOTAL_COLS).fill(""); 
-        const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; const nombreLeido = getVal('.s-nom');
-        if (isNaturalAdd && nombreLeido.trim() === "") continue;
-
-        if (tab === "adelantos") {
-            finalRowData[offset] = nombreLeido;
-            for (let a = 0; a < 5; a++) {
-                const inpVal = tr.querySelector(`.ad-col-${a}`); const inpFec = tr.querySelector(`.ad-fec-${a}`);
-                if (inpVal) finalRowData[offset + 4 + (a*2)] = inpVal.value;
-                if (inpFec) finalRowData[offset + 5 + (a*2)] = getValDate(`.ad-fec-${a}`, tr);
-            }
-        } else if (tab === "liquidacion-sueldos") {
-            finalRowData[offset] = nombreLeido; finalRowData[offset+1] = MESES_NOMBRES[month]; finalRowData[offset+2] = getVal('.s-hor'); finalRowData[offset+3] = getVal('.s-ph'); 
-            if (tr.querySelector('.s-plus')) { finalRowData[offset+14] = getVal('.s-plus'); finalRowData[offset+15] = getVal('.s-plus-det'); }
-            if (tr.querySelector('.s-deb')) { finalRowData[offset+16] = getVal('.s-deb'); finalRowData[offset+17] = getVal('.s-deb-det'); }
-            if (tr.querySelector('.s-agui')) finalRowData[offset+18] = getVal('.s-agui');
-            finalRowData[offset+19] = getVal('.s-me'); finalRowData[offset+20] = getVal('.s-mt'); finalRowData[offset+21] = getValDate('.s-fp', tr); 
-            let finalSue = getVal('.s-sue'); if (finalSue !== "" && parseFloat(finalSue) > 0) finalRowData[offset+22] = "-" + finalSue; else finalRowData[offset+22] = finalSue;
-        }
-        batchRows.push({ rowIndex: rowIndex, rowData: finalRowData });
-    }
-    
-    appState.sueldosEditMode = false; window.renderSueldos(); showToast("Guardando...");
-    try { await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_BATCH", data: { year: year, rows: batchRows } }) }); showToast("¡Guardado exitoso!"); fetchFinancialDataSilent(); } catch { showToast("Error al guardar."); fetchFinancialData(); }
-};
-
 // ==========================================
 // BALANCES Y PROVEEDORES (RESTO DE FUNCIONES UI Y LÓGICA DE TABLAS)
 // ==========================================
-function setupAccordions(c) { c.querySelectorAll(".accordion-header").forEach(h => h.onclick = function() { const i = this.parentElement; const b = this.nextElementSibling; i.classList.toggle("open"); b.style.maxHeight = i.classList.contains("open") ? b.scrollHeight + "px" : null; }); }
-function populateSidebarHistory() { const gList = document.getElementById("sidebar-gastos-list"); const iList = document.getElementById("sidebar-ingresos-list"); gList.innerHTML = ""; iList.innerHTML = ""; if (!appState.balances) return; Object.keys(appState.balances.gastos).forEach(sheet => { const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheet; btn.onclick = () => openHistoryView(sheet, "gastos", btn); gList.appendChild(btn); }); const btnI = document.createElement("button"); btnI.className = "history-btn"; btnI.textContent = "Ingresos"; btnI.onclick = () => openHistoryView("Ingresos", "ingresos", btnI); iList.appendChild(btnI); }
-function populateCuentasDropdown() { const select = document.getElementById("new-op-cuenta"); if (!select || !appState.balances) return; select.innerHTML = '<option value="">-- Seleccione una cuenta --</option>'; const optgroupI = document.createElement("optgroup"); optgroupI.label = "INGRESOS"; const optI = document.createElement("option"); optI.value = "Ingresos"; optI.textContent = "Ingresos"; optgroupI.appendChild(optI); select.appendChild(optgroupI); const optgroupG = document.createElement("optgroup"); optgroupG.label = "GASTOS"; Object.keys(appState.balances.gastos).forEach(s => { if(s === "Sueldos") return; const opt = document.createElement("option"); opt.value = s; opt.textContent = s; optgroupG.appendChild(opt); }); select.appendChild(optgroupG); }
+function setupAccordions(c) { 
+    c.querySelectorAll(".accordion-header").forEach(h => h.onclick = function() { 
+        const i = this.parentElement; const b = this.nextElementSibling; 
+        i.classList.toggle("open"); 
+        b.style.maxHeight = i.classList.contains("open") ? b.scrollHeight + "px" : null; 
+    }); 
+}
+
+function populateSidebarHistory() { 
+    const gList = document.getElementById("sidebar-gastos-list"); 
+    const iList = document.getElementById("sidebar-ingresos-list"); 
+    if (!gList || !iList) return;
+    gList.innerHTML = ""; iList.innerHTML = ""; 
+    if (!appState.balances) return; 
+    
+    Object.keys(appState.balances.gastos).forEach(sheet => { 
+        const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheet; 
+        btn.onclick = () => openHistoryView(sheet, "gastos", btn); 
+        gList.appendChild(btn); 
+    }); 
+    const btnI = document.createElement("button"); btnI.className = "history-btn"; btnI.textContent = "Ingresos"; 
+    btnI.onclick = () => openHistoryView("Ingresos", "ingresos", btnI); 
+    iList.appendChild(btnI); 
+}
+
+function populateCuentasDropdown() { 
+    const select = document.getElementById("new-op-cuenta"); 
+    if (!select || !appState.balances) return; 
+    select.innerHTML = '<option value="">-- Seleccione una cuenta --</option>'; 
+    const optgroupI = document.createElement("optgroup"); optgroupI.label = "INGRESOS"; 
+    const optI = document.createElement("option"); optI.value = "Ingresos"; optI.textContent = "Ingresos"; optgroupI.appendChild(optI); select.appendChild(optgroupI); 
+    const optgroupG = document.createElement("optgroup"); optgroupG.label = "GASTOS"; 
+    Object.keys(appState.balances.gastos).forEach(s => { 
+        if(s === "Sueldos") return; 
+        const opt = document.createElement("option"); opt.value = s; opt.textContent = s; optgroupG.appendChild(opt); 
+    }); 
+    select.appendChild(optgroupG); 
+}
 
 function renderBalance() {
     if (!appState.balances) return; const pk = `${appState.selectedYear}-${appState.selectedMonth}`; let tg = 0; let ti = 0; let mc = 0; const gList = document.getElementById("gastos-list"); gList.innerHTML = "";
