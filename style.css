@@ -212,3 +212,61 @@ body {
 .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 10pt; border: 1px solid transparent; }
 .alert-danger { background-color: rgba(239, 68, 68, 0.05); border-color: var(--danger-color); color: var(--danger-color); }
 .tab-view { display: none; } .tab-view.active { display: block; }
+
+/* --- NUEVOS ESTILOS: MODO NOCHE Y SUELDOS --- */
+body.dark-mode select.form-control {
+    background-color: #374151;
+    color: #f3f4f6;
+    border-color: #4b5563;
+}
+body.dark-mode select.form-control option {
+    background-color: #1f2937;
+    color: #f3f4f6;
+}
+
+/* Inputs minimalistas estilo Excel */
+.sueldos-minimal-input {
+    border: none !important;
+    background: transparent !important;
+    border-bottom: 1px dotted var(--border-color) !important;
+    border-radius: 0 !important;
+    padding: 2px !important;
+    color: var(--text-primary) !important;
+    font-size: 9.5pt;
+    width: 100%;
+    outline: none !important;
+    box-shadow: none !important;
+}
+.sueldos-minimal-input:focus {
+    border-bottom: 1px solid var(--primary-color) !important;
+}
+
+/* Barra lateral colapsable */
+.sidebar {
+    transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+}
+.sidebar.collapsed {
+    width: 0 !important;
+    padding: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+}
+
+/* Botón flotante para la barra */
+.toggle-sidebar-btn {
+    position: absolute;
+    left: 10px;
+    top: 15px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+    z-index: 100;
+}
+.main-header { position: relative; } /* Para anclar el botón */
+
+/* Ocultar pestañas inactivas correctamente */
+.tab-view { display: none; }
+.tab-view.active { display: flex; flex-direction: column; }
