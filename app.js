@@ -356,7 +356,19 @@ function setupEventListeners() {
     document.getElementById("sueldos-year").onchange = (e) => { const newYear = e.target.value; appState.sueldosYear = newYear; if (!appState.sueldos[newYear]) { if (confirm(`El año ${newYear} no tiene registros de RRHH.\n\n¿Desea inicializar este año automáticamente?`)) { sendGlobalPostRequest("SUELDO_INIT_YEAR", { year: newYear }); } else { window.renderSueldos(); } } else { window.renderSueldos(); } };
     document.getElementById("btn-refresh").onclick = () => fetchFinancialData();
     document.getElementById("global-file-input").onchange = function(e) {
-        const file = e.target.files[0]; if (!file || !appState.currentUpload) return; toggleLoader(true, "Procesando archivo..."); const reader = new FileReader(); reader.onload = function(evt) { const payload = { action: "UPLOAD_FILE", data: { sheetName: appState.currentUpload.sheetName, rowIndex: appState.currentUpload.rowIndex, type: appState.currentUpload.type, fileName: file.name, mimeType: file.type, fileBase64: evt.target.result.split(',')[1] } }; fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "UPLOAD_FILE", data: payload }) }).then(r=>r.json()).then(d => { if(d.status==="success") fetchFinancialData(); else { alert("Error"); toggleLoader(false); } }).catch(() => toggleLoader(false)); document.getElementById("global-file-input").value = ""; }; reader.readAsDataURL(file);
+        const file = e.target.files[0]; if (!file || !appState.currentUpload) return; 
+        showToast("Subiendo comprobante a Drive..."); 
+        const reader = new FileReader(); 
+        reader.onload = function(evt) { 
+            const payload = { action: "UPLOAD_FILE", data: { sheetName: appState.currentUpload.sheetName, rowIndex: appState.currentUpload.rowIndex, type: appState.currentUpload.type, fileName: file.name, mimeType: file.type, fileBase64: evt.target.result.split(',')[1] } }; 
+            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+            .then(r=>r.json()).then(d => { 
+                if(d.status==="success") { showToast("¡Archivo subido!"); fetchFinancialDataSilent(); } 
+                else { alert("Error al subir el archivo."); } 
+            }).catch(() => showToast("Error de conexión.")); 
+            document.getElementById("global-file-input").value = ""; 
+        }; 
+        reader.readAsDataURL(file);
     };
     setupSueldosButtons();
 }
