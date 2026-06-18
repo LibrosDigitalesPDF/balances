@@ -708,3 +708,30 @@ window.saveSueldos = async function() {
         fetchFinancialData(); 
     }
 };
+
+function setupWebModalHandlers() {
+    const btnClose = document.getElementById('btn-modal-close');
+    if (btnClose) btnClose.onclick = () => document.getElementById('web-modal').classList.add('hidden');
+    
+    const btnCancel = document.getElementById('btn-modal-cancel');
+    if (btnCancel) btnCancel.onclick = () => window.openWebModal(appState.activeProvRowIndex);
+    
+    const btnEdit = document.getElementById('btn-modal-edit');
+    if (btnEdit) btnEdit.onclick = function() { 
+        document.getElementById('web-view-mode').classList.add('hidden'); 
+        document.getElementById('web-edit-mode').classList.remove('hidden'); 
+        this.classList.add('hidden'); 
+        document.getElementById('btn-modal-save').classList.remove('hidden'); 
+        document.getElementById('btn-modal-cancel').classList.remove('hidden'); 
+    };
+    
+    const btnSave = document.getElementById('btn-modal-save');
+    if (btnSave) btnSave.onclick = function() { 
+        const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex); 
+        if (prov) {
+            prov.web = document.getElementById('modal-web-input').value; 
+            sendGlobalPostRequest("PROV_EDIT", prov); 
+            document.getElementById('web-modal').classList.add('hidden'); 
+        }
+    };
+}
