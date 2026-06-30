@@ -1,14 +1,14 @@
 // ==========================================
-// CONFIGURACIÓN Y ESTADO GLOBAL
+// CONFIGURACIÓN Y ESTADO GLOBAL (1 MES = 1 PESTAÑA / 33 COLUMNAS)
 // ==========================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxXulFw6xdyWWwhCwhX6SBz64LrIpj_kC8matZilLgPBiEc-Aep_DdNmTilC9vrYZpcfA/exec";
 const MESES_NOMBRES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const COLS_PER_MONTH = 24;
-const TOTAL_COLS = COLS_PER_MONTH * 12;
 
-const LOADER_PHASES = [
-    "Conectando con el servidor central...", "Descargando flujos de caja...", "Integrando sistema de RRHH...", "Sincronizando vistas dinámicas..."
-];
+const IDX_NOM=0, IDX_HOR=1, IDX_PH=2;
+const IDX_AD_START=3, IDX_PLUS_START=9, IDX_DEB_M=25, IDX_DEB_D=26, IDX_AGUI=27;
+const IDX_ME=28, IDX_MT=29, IDX_FP=30, IDX_SUE=31, IDX_EST=32;
+
+const LOADER_PHASES = ["Conectando con el servidor...", "Descargando flujos...", "Integrando RRHH...", "Sincronizando vistas..."];
 
 let appState = {
     balances: null, carpetas: {}, proveedores: [], sueldos: {}, 
@@ -22,7 +22,7 @@ let appState = {
 let loaderInterval = null;
 
 // ==========================================
-// INICIALIZACIÓN Y UTILIDADES
+// INICIALIZACIÓN Y UTILIDADES GLOBALES
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
     initTheme(); initSelectors(); initTabs(); setupEventListeners(); fetchFinancialData(); 
@@ -59,8 +59,7 @@ function formatFinalBalance(v) { if(isNaN(v)) return "-"; const n = Math.abs(v).
 function toggleLoader(show, msg = "") { 
     clearInterval(loaderInterval); const l = document.getElementById("main-loader"); const m = document.getElementById("loader-msg"); 
     if (!show) { l.classList.add("hidden"); return; } 
-    l.classList.remove("hidden"); 
-    if (msg) { m.textContent = msg; return; } 
+    l.classList.remove("hidden"); if (msg) { m.textContent = msg; return; } 
     let p = 0; m.textContent = LOADER_PHASES[p]; loaderInterval = setInterval(() => { p = (p + 1) % LOADER_PHASES.length; m.textContent = LOADER_PHASES[p]; }, 1100); 
 }
 
@@ -73,7 +72,10 @@ function showToast(msg) {
 function initSelectors() {
     const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear());
     appState.selectedMonth = m; appState.selectedYear = y; appState.sueldosMonth = m; appState.sueldosYear = y; appState.historyMonth = "ALL"; appState.historyYear = "ALL";
-    document.getElementById("select-month").value = m; document.getElementById("select-year").value = y; document.getElementById("sueldos-month").value = m; document.getElementById("sueldos-year").value = y; document.getElementById("historial-month").value = "ALL"; document.getElementById("historial-year").value = "ALL";
+    if(document.getElementById("select-month")) document.getElementById("select-month").value = m; 
+    if(document.getElementById("select-year")) document.getElementById("select-year").value = y; 
+    if(document.getElementById("sueldos-month")) document.getElementById("sueldos-month").value = m; 
+    if(document.getElementById("sueldos-year")) document.getElementById("sueldos-year").value = y; 
 }
 
 function initTabs() {
@@ -102,11 +104,8 @@ function initTabs() {
         btn.addEventListener("click", () => {
             document.querySelectorAll("#module-sueldos .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active");
             appState.activeSueldosTab = btn.getAttribute("data-tab");
-            
-            // Si estaba viendo un historial, lo oculta para mostrar las pestañas normales
             const histView = document.getElementById("view-historial-trabajador");
             if (histView) histView.classList.remove("active");
-
             document.querySelectorAll("#module-sueldos .tab-view").forEach(view => {
                 if (view.id !== "view-historial-trabajador") view.classList.toggle("active", view.id === `view-${appState.activeSueldosTab}`);
             });
@@ -116,18 +115,18 @@ function initTabs() {
 }
 
 function setupEventListeners() {
-    document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
-    document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
-    document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
-    document.getElementById("historial-year").onchange = (e) => { appState.historyYear = e.target.value; renderHistoryTable(); };
+    if(document.getElementById("select-month")) document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
+    if(document.getElementById("select-year")) document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
+    if(document.getElementById("historial-month")) document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
+    if(document.getElementById("historial-year")) document.getElementById("historial-year").onchange = (e) => { appState.historyYear = e.target.value; renderHistoryTable(); };
 
     if(document.getElementById("btn-save-nueva-op")) {
         document.getElementById("btn-save-nueva-op").onclick = () => {
             const cuenta = document.getElementById("new-op-cuenta").value; const fecha = document.getElementById("new-op-fec").value; const det = document.getElementById("new-op-det").value; let mon = parseMonto(document.getElementById("new-op-mon").value); const ope = document.getElementById("new-op-ope").value; const i21 = document.getElementById("new-op-i21").value; const i10 = document.getElementById("new-op-i10").value; const icont = document.getElementById("new-op-icont").value; const cc = document.getElementById("new-op-comp-c") ? document.getElementById("new-op-comp-c").value : ""; const cv = document.getElementById("new-op-comp-v") ? document.getElementById("new-op-comp-v").value : "";
-            if(!cuenta || !fecha || !mon) { alert("Complete cuenta, fecha y monto para guardar."); return; }
+            if(!cuenta || !fecha || !mon) { alert("Complete cuenta, fecha y monto."); return; }
             let isGasto = cuenta !== "Ingresos"; if(isGasto && mon > 0) mon = -mon;
-            const payload = { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: cc, idComprobantePago: cv };
-            sendGlobalPostRequest("BAL_ADD", payload); document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = ""); document.getElementById("new-op-cuenta").value = "";
+            sendGlobalPostRequest("BAL_ADD", { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: cc, idComprobantePago: cv }); 
+            document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = ""); document.getElementById("new-op-cuenta").value = "";
         };
     }
 
@@ -135,28 +134,30 @@ function setupEventListeners() {
     if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
     if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").onclick = () => saveHistorial();
 
-    document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); appState.activeProvTab = btn.getAttribute("data-prov-tab"); const titles = { "gen": "Datos generales del proveedor", "ban": "Información bancaria y transferencias", "con": "Teléfono, correo y portal web" }; document.getElementById("prov-tab-subtitle").textContent = titles[appState.activeProvTab]; renderProveedores(); }; });
+    document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); appState.activeProvTab = btn.getAttribute("data-prov-tab"); document.getElementById("prov-tab-subtitle").textContent = "Gestión de " + appState.activeProvTab; renderProveedores(); }; });
     if(document.getElementById("btn-proveedores-edit-mode")) document.getElementById("btn-proveedores-edit-mode").onclick = () => toggleProveedoresEditMode(true);
     if(document.getElementById("btn-proveedores-cancel")) document.getElementById("btn-proveedores-cancel").onclick = () => toggleProveedoresEditMode(false);
     if(document.getElementById("btn-proveedores-save")) document.getElementById("btn-proveedores-save").onclick = () => saveProveedores();
 
+    // Sueldos Event Listeners
     if(document.getElementById("sueldos-month")) document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; window.renderSueldos(); };
-    if(document.getElementById("sueldos-year")) document.getElementById("sueldos-year").onchange = (e) => { const newYear = e.target.value; appState.sueldosYear = newYear; if (!appState.sueldos[newYear]) { if (confirm(`El año ${newYear} no tiene registros de RRHH.\n\n¿Desea inicializar este año automáticamente?`)) { sendGlobalPostRequest("SUELDO_INIT_YEAR", { year: newYear }); } else { window.renderSueldos(); } } else { window.renderSueldos(); } };
+    if(document.getElementById("sueldos-year")) document.getElementById("sueldos-year").onchange = (e) => { appState.sueldosYear = e.target.value; window.renderSueldos(); };
     
     if(document.getElementById("btn-adelantos-edit")) document.getElementById("btn-adelantos-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
     if(document.getElementById("btn-adelantos-cancel")) document.getElementById("btn-adelantos-cancel").onclick = () => { appState.sueldosEditMode = false; window.renderSueldos(); };
     if(document.getElementById("btn-adelantos-save")) document.getElementById("btn-adelantos-save").onclick = () => window.saveSueldos();
-    if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").onclick = () => { if(appState.sueldosVisibleAdelantos < 5) { appState.sueldosVisibleAdelantos++; window.renderSueldos(); } else { alert("Límite máximo de 5 adelantos."); } };
+    if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").onclick = () => { if(appState.sueldosVisibleAdelantos < 3) { appState.sueldosVisibleAdelantos++; window.renderSueldos(); } else { alert("Límite máximo de 3 adelantos."); } };
 
     if(document.getElementById("btn-liq-edit")) document.getElementById("btn-liq-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
     if(document.getElementById("btn-liq-cancel")) document.getElementById("btn-liq-cancel").onclick = () => { appState.sueldosEditMode = false; appState.sueldosShowPlus=false; appState.sueldosShowDebito=false; appState.sueldosShowAguinaldo=false; window.renderSueldos(); };
     if(document.getElementById("btn-liq-save")) document.getElementById("btn-liq-save").onclick = () => window.saveSueldos();
     
-    if(document.getElementById("btn-liq-add-plus")) document.getElementById("btn-liq-add-plus").onclick = () => { appState.sueldosShowPlus = true; window.renderSueldos(); };
+    if(document.getElementById("btn-liq-add-plus")) document.getElementById("btn-liq-add-plus").onclick = () => { appState.sueldosShowPlus++; window.renderSueldos(); };
     if(document.getElementById("btn-liq-add-debito")) document.getElementById("btn-liq-add-debito").onclick = () => { appState.sueldosShowDebito = true; window.renderSueldos(); };
     if(document.getElementById("btn-liq-add-aguinaldo")) document.getElementById("btn-liq-add-aguinaldo").onclick = () => { appState.sueldosShowAguinaldo = true; window.renderSueldos(); };
 
     if(document.getElementById("btn-refresh")) document.getElementById("btn-refresh").onclick = () => fetchFinancialData();
+    
     if(document.getElementById("global-file-input")) {
         document.getElementById("global-file-input").onchange = function(e) {
             const file = e.target.files[0]; if (!file || !appState.currentUpload) return; 
@@ -170,30 +171,42 @@ function setupEventListeners() {
     }
 }
 
+// ==========================================
+// DESCARGA DE DATOS Y CONEXIÓN
+// ==========================================
 function injectSueldosIntoBalances() {
     if (!appState.balances) return;
     appState.balances.gastos["Sueldos"] = {};
     const gastosSueldos = appState.balances.gastos["Sueldos"];
 
-    Object.keys(appState.sueldos).forEach(year => {
-        appState.sueldos[year].forEach((worker, wIndex) => {
+    Object.keys(appState.sueldos).forEach(tabName => {
+        const parts = tabName.split(" ");
+        if(parts.length !== 2) return;
+        const mesNombre = parts[0]; const yearStr = parts[1];
+        const monthIdx = MESES_NOMBRES.indexOf(mesNombre); if(monthIdx === -1) return;
+        const monthStr = String(monthIdx + 1).padStart(2, '0');
+        const periodKey = `${yearStr}-${monthStr}`;
+
+        if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
+
+        appState.sueldos[tabName].forEach((worker, wIndex) => {
             const rData = worker.rowData;
-            for (let m = 0; m < 12; m++) {
-                const offset = m * COLS_PER_MONTH; const nombre = rData[offset] || rData[0]; if (!nombre || nombre === "-") continue;
-                const monthStr = String(m + 1).padStart(2, '0'); const periodKey = `${year}-${monthStr}`;
-                if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
-                let methodStr = "-"; const valE = Math.abs(parseMonto(rData[offset+19])); const valT = Math.abs(parseMonto(rData[offset+20]));
-                if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf."; else if (valE > 0) methodStr = "Efectivo"; else if (valT > 0) methodStr = "Transferencia";
-                const sueldoNum = Math.abs(parseMonto(rData[offset+22])); const fechaRawSueldo = rData[offset+21];
-                if (sueldoNum > 0) {
-                    gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${m}_SF`, fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${year}`, detalle: nombre, monto: -sueldoNum, mes: MESES_NOMBRES[m], metodoPago: methodStr, precioHora: rData[offset+3] || "-", horas: rData[offset+2] || "-", operacion: "Sueldo Final", isVirtual: true });
-                }
-                for (let a = 0; a < 5; a++) {
-                    let adMonto = Math.abs(parseMonto(rData[offset + 4 + (a*2)]));
-                    if (adMonto > 0) {
-                        gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${m}_A${a+1}`, fecha: formatDateToAR(rData[offset + 5 + (a*2)]) || `01/${monthStr}/${year}`, detalle: `${nombre} (Adelanto ${a+1})`, monto: -adMonto, mes: MESES_NOMBRES[m], metodoPago: methodStr, precioHora: "-", horas: "-", operacion: `Adelanto ${a+1}`, isVirtual: true });
-                    }
-                }
+            const nombre = rData[IDX_NOM]; if (!nombre || nombre === "-") return;
+            
+            let methodStr = "-"; 
+            const valE = Math.abs(parseMonto(rData[IDX_ME])); const valT = Math.abs(parseMonto(rData[IDX_MT]));
+            if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf."; else if (valE > 0) methodStr = "Efectivo"; else if (valT > 0) methodStr = "Transferencia";
+            
+            const sueldoNum = Math.abs(parseMonto(rData[IDX_SUE])); 
+            const fechaRawSueldo = rData[IDX_FP];
+            
+            if (sueldoNum > 0) {
+                gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${monthIdx}_SF`, fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${yearStr}`, detalle: nombre, monto: -sueldoNum, mes: mesNombre, metodoPago: methodStr, precioHora: rData[IDX_PH] || "-", horas: rData[IDX_HOR] || "-", operacion: "Sueldo Final", isVirtual: true });
+            }
+            
+            for (let a = 0; a < 3; a++) {
+                let adMonto = Math.abs(parseMonto(rData[IDX_AD_START + (a*2)]));
+                if (adMonto > 0) { gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${monthIdx}_A${a+1}`, fecha: formatDateToAR(rData[IDX_AD_START + 1 + (a*2)]) || `01/${monthStr}/${yearStr}`, detalle: `${nombre} (Adelanto ${a+1})`, monto: -adMonto, mes: mesNombre, metodoPago: methodStr, precioHora: "-", horas: "-", operacion: `Adelanto ${a+1}`, isVirtual: true }); }
             }
         });
     });
@@ -204,15 +217,10 @@ function fetchFinancialData() {
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
-            injectSueldosIntoBalances(); 
-            
-            // ESTA LÍNEA RESTAURA LAS PESTAÑAS DE BALANCES QUE FALTABAN
-            populateSidebarHistory(); 
-            
-            populateCuentasDropdown(); renderBalance(); renderProveedores();
+            injectSueldosIntoBalances(); populateSidebarHistory(); populateCuentasDropdown(); renderBalance(); renderProveedores();
             if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
             if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
-            if (appState.currentHistorySheet) { renderHistoryTable(); if (appState.currentHistorySheet !== "Sueldos") renderCarpetasSection(appState.currentHistorySheet); }
+            if (appState.currentHistorySheet) { renderHistoryTable(); }
         }
     }).finally(() => toggleLoader(false));
 }
@@ -221,8 +229,7 @@ function fetchFinancialDataSilent() {
     fetch(API_URL).then(r => r.json()).then(j => {
         if (j.status === "success") {
             appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
-            injectSueldosIntoBalances(); 
-            populateSidebarHistory(); // Se refresca silenciosamente
+            injectSueldosIntoBalances(); populateSidebarHistory();
             if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
         }
     });
@@ -231,7 +238,7 @@ function fetchFinancialDataSilent() {
 function sendGlobalPostRequest(action, dataObj) { toggleLoader(true, "Procesando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) }).then(res => res.json()).then(res => { if (res.status === "success") fetchFinancialData(); else { alert("Error"); toggleLoader(false); } }).catch(() => toggleLoader(false)); }
 
 // ==========================================
-// MÓDULO: SUELDOS (LOGICA DE VISTAS, EXCEL MINIMALISTA Y HISTORIAL EN PANTALLA)
+// MÓDULO: SUELDOS (HISTORIAL EN PANTALLA Y LÓGICA EXCEL)
 // ==========================================
 
 function populateWorkerHistory() {
@@ -240,41 +247,36 @@ function populateWorkerHistory() {
     list.innerHTML = "";
     let uniqueWorkers = new Set();
     
-    Object.values(appState.sueldos).forEach(yearData => {
-        yearData.forEach(w => {
-            for(let m = 0; m < 12; m++) {
-                let n = w.rowData[m * COLS_PER_MONTH];
-                if(n && n.toString().trim() !== "-" && n.toString().trim() !== "") {
-                    uniqueWorkers.add(n.toString().trim());
-                }
+    Object.keys(appState.sueldos).forEach(tabName => {
+        appState.sueldos[tabName].forEach(w => {
+            let n = w.rowData[IDX_NOM];
+            if(n && n.toString().trim() !== "-" && n.toString().trim() !== "") {
+                uniqueWorkers.add(n.toString().trim());
             }
         });
     });
     
     Array.from(uniqueWorkers).sort().forEach(nw => {
         let div = document.createElement("div");
-        div.style.padding = "10px 15px"; 
-        div.style.fontSize = "9.5pt";
+        div.style.padding = "10px 15px"; div.style.fontSize = "9.5pt";
         div.style.borderBottom = "1px solid var(--border-color)";
         div.style.color = "var(--text-secondary)";
-        div.style.cursor = "pointer";
-        div.style.transition = "background 0.2s";
+        div.style.cursor = "pointer"; div.style.transition = "background 0.2s";
         div.textContent = nw;
+        div.onmouseover = () => div.style.background = "var(--bg-hover, rgba(0,0,0,0.05))";
+        div.onmouseout = () => div.style.background = "transparent";
         div.onclick = () => showWorkerHistoryInMain(nw);
         list.appendChild(div);
     });
 }
 
 function showWorkerHistoryInMain(name) {
-    // Desactivamos temporalmente las subpestañas normales y sus botones activos
     document.querySelectorAll("#module-sueldos .tab-view").forEach(v => v.classList.remove("active"));
     document.querySelectorAll("#module-sueldos .menu-btn").forEach(b => b.classList.remove("active"));
     
     let viewHist = document.getElementById("view-historial-trabajador");
     if (!viewHist) {
-        viewHist = document.createElement("section");
-        viewHist.id = "view-historial-trabajador";
-        viewHist.className = "tab-view";
+        viewHist = document.createElement("section"); viewHist.id = "view-historial-trabajador"; viewHist.className = "tab-view";
         const container = document.querySelector("#module-sueldos .view-container");
         if (container) container.appendChild(viewHist);
     }
@@ -282,24 +284,11 @@ function showWorkerHistoryInMain(name) {
     viewHist.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); margin-bottom: 20px;">
             <h3 class="section-title text-left" style="margin: 0; border: none; padding: 0;">Historial General: <span style="color:var(--primary-color);">${name}</span></h3>
-            <button id="btn-back-from-hist" class="btn btn-secondary" style="padding: 6px 12px; font-size: 9.5pt;">← Volver</button>
+            <button id="btn-back-from-hist" class="btn btn-secondary" style="padding: 6px 12px; font-size: 9.5pt;">← Volver a Liquidación</button>
         </div>
         <div class="table-responsive nowrap-table" style="flex-grow: 1; overflow: auto; padding-bottom: 20px;">
             <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="text-left">Año</th>
-                        <th class="text-left">Mes</th>
-                        <th class="text-center">Horas</th>
-                        <th class="text-right">Precio/Hr</th>
-                        <th class="text-right">Adelantos</th>
-                        <th class="text-right">Plus</th>
-                        <th class="text-right">Débito</th>
-                        <th class="text-right">Aguinaldo</th>
-                        <th class="text-right">Sueldo Final</th>
-                        <th class="text-left">F. Pago</th>
-                    </tr>
-                </thead>
+                <thead><tr><th class="text-left">Mes</th><th class="text-left">Año</th><th class="text-center">Hs</th><th class="text-right">P/Hr</th><th class="text-right">Adelantos</th><th class="text-right">Plus Tot.</th><th class="text-right">Débito</th><th class="text-right">Aguinaldo</th><th class="text-right">Sueldo Final</th><th class="text-left">F. Pago</th></tr></thead>
                 <tbody id="worker-main-hist-tbody"></tbody>
             </table>
         </div>
@@ -314,28 +303,23 @@ function showWorkerHistoryInMain(name) {
         window.renderSueldos();
     };
     
-    const tbody = document.getElementById("worker-main-hist-tbody");
-    let historyData = [];
+    const tbody = document.getElementById("worker-main-hist-tbody"); let historyData = [];
     
-    Object.keys(appState.sueldos).forEach(year => {
-        appState.sueldos[year].forEach(w => {
-            for (let m = 0; m < 12; m++) {
-                const offset = m * COLS_PER_MONTH;
-                const wName = w.rowData[offset] || w.rowData[0];
-                if (wName && wName.toString().trim().toLowerCase() === name.toLowerCase()) {
-                    const r = w.rowData;
-                    let sumAd = 0; for(let a=0; a<5; a++) sumAd += Math.abs(parseMonto(r[offset+4+(a*2)]));
-                    let pl = Math.abs(parseMonto(r[offset+14]));
-                    let db = Math.abs(parseMonto(r[offset+16]));
-                    let ag = Math.abs(parseMonto(r[offset+18]));
-                    let final = Math.abs(parseMonto(r[offset+22]));
-                    let hs = r[offset+2] || '-';
-                    let ph = parseMonto(r[offset+3]);
-                    let fp = formatDateToAR(r[offset+21]) || '-';
-                    
-                    if (hs !== '-' || final > 0 || sumAd > 0 || pl > 0 || db > 0 || ag > 0) {
-                        historyData.push({ year, monthStr: MESES_NOMBRES[m], monthIdx: m, hs, ph, sumAd, pl, db, ag, final, fp });
-                    }
+    Object.keys(appState.sueldos).forEach(tabName => {
+        const parts = tabName.split(" "); if(parts.length !== 2) return;
+        const mStr = parts[0]; const yStr = parts[1]; const mIdx = MESES_NOMBRES.indexOf(mStr);
+        
+        appState.sueldos[tabName].forEach(w => {
+            const wName = w.rowData[IDX_NOM];
+            if (wName && wName.toString().trim().toLowerCase() === name.toLowerCase()) {
+                const r = w.rowData;
+                let sumAd = 0; for(let a=0; a<3; a++) sumAd += Math.abs(parseMonto(r[IDX_AD_START+(a*2)]));
+                let pl = 0; for(let p=0; p<8; p++) pl += Math.abs(parseMonto(r[IDX_PLUS_START+(p*2)]));
+                let db = Math.abs(parseMonto(r[IDX_DEB_M])); let ag = Math.abs(parseMonto(r[IDX_AGUI]));
+                let final = Math.abs(parseMonto(r[IDX_SUE])); let hs = r[IDX_HOR] || '-'; let ph = parseMonto(r[IDX_PH]); let fp = formatDateToAR(r[IDX_FP]) || '-';
+                
+                if (hs !== '-' || final > 0 || sumAd > 0 || pl > 0 || db > 0 || ag > 0) {
+                    historyData.push({ year: parseInt(yStr), monthStr: mStr, monthIdx: mIdx, hs, ph, sumAd, pl, db, ag, final, fp });
                 }
             }
         });
@@ -343,24 +327,10 @@ function showWorkerHistoryInMain(name) {
     
     historyData.sort((a, b) => b.year !== a.year ? b.year - a.year : b.monthIdx - a.monthIdx);
     
-    if (historyData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay registros para este trabajador.</td></tr>`;
-    } else {
+    if (historyData.length === 0) { tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay registros para este trabajador.</td></tr>`; } 
+    else {
         historyData.forEach(d => {
-            tbody.innerHTML += `
-                <tr>
-                    <td><b>${d.year}</b></td>
-                    <td>${d.monthStr}</td>
-                    <td class="text-center">${d.hs}</td>
-                    <td class="text-right">${formatArgentineCurrency(d.ph)}</td>
-                    <td class="text-right text-danger">${d.sumAd > 0 ? "-"+formatArgentineCurrency(d.sumAd) : '-'}</td>
-                    <td class="text-right text-success">${d.pl > 0 ? "+"+formatArgentineCurrency(d.pl) : '-'}</td>
-                    <td class="text-right text-danger">${d.db > 0 ? "-"+formatArgentineCurrency(d.db) : '-'}</td>
-                    <td class="text-right text-warning">${d.ag > 0 ? "+"+formatArgentineCurrency(d.ag) : '-'}</td>
-                    <td class="text-right" style="font-weight:700; color:var(--primary-color);">${formatArgentineCurrency(d.final)}</td>
-                    <td>${d.fp}</td>
-                </tr>
-            `;
+            tbody.innerHTML += `<tr><td><b>${d.monthStr}</b></td><td>${d.year}</td><td class="text-center">${d.hs}</td><td class="text-right">${formatArgentineCurrency(d.ph)}</td><td class="text-right text-danger">${d.sumAd > 0 ? "-"+formatArgentineCurrency(d.sumAd) : '-'}</td><td class="text-right text-success">${d.pl > 0 ? "+"+formatArgentineCurrency(d.pl) : '-'}</td><td class="text-right text-danger">${d.db > 0 ? "-"+formatArgentineCurrency(d.db) : '-'}</td><td class="text-right text-warning">${d.ag > 0 ? "+"+formatArgentineCurrency(d.ag) : '-'}</td><td class="text-right" style="font-weight:700; color:var(--primary-color);">${formatArgentineCurrency(d.final)}</td><td>${d.fp}</td></tr>`;
         });
     }
     viewHist.classList.add("active");
@@ -368,12 +338,9 @@ function showWorkerHistoryInMain(name) {
 
 window.renderSueldos = function() {
     populateWorkerHistory();
-    const year = appState.sueldosYear; 
-    const month = parseInt(appState.sueldosMonth) - 1; 
-    const offset = month * COLS_PER_MONTH;
+    const monthName = MESES_NOMBRES[parseInt(appState.sueldosMonth) - 1]; const yearStr = appState.sueldosYear; const tabName = `${monthName} ${yearStr}`;
     
-    const toggleBtn = document.getElementById("toggle-sueldos-sidebar"); 
-    const sidebar = document.getElementById("sueldos-sidebar");
+    const toggleBtn = document.getElementById("toggle-sueldos-sidebar"); const sidebar = document.getElementById("sueldos-sidebar");
     if (toggleBtn && sidebar) { toggleBtn.onclick = () => sidebar.classList.toggle("collapsed"); }
     
     if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").classList.toggle("hidden", !appState.sueldosEditMode);
@@ -390,39 +357,40 @@ window.renderSueldos = function() {
 
     if (document.getElementById("view-historial-trabajador") && document.getElementById("view-historial-trabajador").classList.contains("active")) return;
 
-    let yearData = appState.sueldos[year] || []; 
-    let activeWorkers = yearData.filter(worker => { 
-        const dataMes = worker.rowData.slice(offset, offset + COLS_PER_MONTH); 
-        const tieneDatosEsteMes = dataMes.some(val => val !== "" && val !== "-"); 
-        const prevMesName = month > 0 ? worker.rowData[(month - 1) * COLS_PER_MONTH] : "";
-        return tieneDatosEsteMes || (prevMesName !== "" && prevMesName !== "-"); 
-    }); 
-    
-    activeWorkers.sort((a, b) => { const nameA = (a.rowData[offset] || a.rowData[0] || "").toString().toLowerCase(); const nameB = (b.rowData[offset] || b.rowData[0] || "").toString().toLowerCase(); return nameA.localeCompare(nameB); });
-
-    if (appState.sueldosEditMode) {
-        let emptyRowData = Array(TOTAL_COLS).fill(""); emptyRowData[offset + 1] = MESES_NOMBRES[month];
-        activeWorkers.push({ rowIndex: "NEW_NATURAL", rowData: emptyRowData });
+    if (!appState.sueldos[tabName] && !appState.sueldosEditMode) {
+        if(document.getElementById("liq-empty-state")) {
+            document.getElementById("liq-empty-state").textContent = `Creando / Sincronizando el mes de ${tabName}...`;
+            document.getElementById("liq-empty-state").classList.remove("hidden");
+        }
+        fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_GET_OR_CREATE_MONTH", data: { monthName: monthName, year: yearStr } }) }).then(() => fetchFinancialDataSilent());
+        return;
     }
+
+    let activeWorkers = appState.sueldos[tabName] ? [...appState.sueldos[tabName]] : [];
+    activeWorkers.sort((a, b) => { const nameA = (a.rowData[IDX_NOM] || "").toString().toLowerCase(); const nameB = (b.rowData[IDX_NOM] || "").toString().toLowerCase(); return nameA.localeCompare(nameB); });
+
+    if (appState.sueldosEditMode) { let emptyRow = Array(33).fill(""); activeWorkers.push({ rowIndex: "NEW_NATURAL", rowData: emptyRow }); }
+
+    let maxPlusUsados = typeof appState.sueldosShowPlus === "number" ? appState.sueldosShowPlus : 0;
+    activeWorkers.forEach(w => { for(let i=0; i<8; i++) { if (parseMonto(w.rowData[IDX_PLUS_START + (i*2)]) > 0) { maxPlusUsados = Math.max(maxPlusUsados, i + 1); } } });
+    if (appState.sueldosShowPlus === true) maxPlusUsados = Math.max(maxPlusUsados, 1);
 
     if (appState.activeSueldosTab === "registro-sueldos") {
         const tbody = document.getElementById("sueldos-reg-tbody"); tbody.innerHTML = "";
         document.getElementById("sueldos-reg-empty").classList.toggle("hidden", activeWorkers.length === 0 || (activeWorkers.length === 1 && activeWorkers[0].rowIndex === "NEW_NATURAL"));
         activeWorkers.forEach(w => {
             if(w.rowIndex === "NEW_NATURAL") return; 
-            const r = w.rowData; const nom = r[offset] || r[0] || "-";
-            const valE = Math.abs(parseMonto(r[offset+19])); const valT = Math.abs(parseMonto(r[offset+20])); 
+            const r = w.rowData; const nom = r[IDX_NOM] || "-"; const valE = Math.abs(parseMonto(r[IDX_ME])); const valT = Math.abs(parseMonto(r[IDX_MT])); 
             let methodStr = "-"; if (valE > 0 && valT > 0) methodStr = `Efvo: ${formatArgentineCurrency(valE)} | Transf: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efectivo`; else if (valT > 0) methodStr = `Transferencia`;
-            const sueldoNum = Math.abs(parseMonto(r[offset+22]));
-            tbody.innerHTML += `<tr><td style="font-weight:600;">${nom}</td><td class="text-right" style="font-weight:700;">${formatArgentineCurrency(sueldoNum)}</td><td>${formatDateToAR(r[offset+21])||'-'}</td><td>${methodStr}</td></tr>`;
+            const sueldoNum = Math.abs(parseMonto(r[IDX_SUE]));
+            tbody.innerHTML += `<tr><td style="font-weight:600;">${nom}</td><td class="text-right" style="font-weight:700;">${formatArgentineCurrency(sueldoNum)}</td><td>${formatDateToAR(r[IDX_FP])||'-'}</td><td>${methodStr}</td></tr>`;
         });
     }
 
     if (appState.activeSueldosTab === "adelantos") {
         const thead = document.getElementById("adelantos-thead"); const tbody = document.getElementById("adelantos-tbody"); const tfoot = document.getElementById("adelantos-tfoot");
-        tbody.innerHTML = ""; tfoot.innerHTML = "";
-        document.getElementById("adelantos-empty-state").classList.toggle("hidden", activeWorkers.length === 0 || (activeWorkers.length === 1 && activeWorkers[0].rowIndex === "NEW_NATURAL"));
-        let cols = Math.max(1, appState.sueldosVisibleAdelantos);
+        tbody.innerHTML = ""; tfoot.innerHTML = ""; document.getElementById("adelantos-empty-state").classList.toggle("hidden", activeWorkers.length === 0 || (activeWorkers.length === 1 && activeWorkers[0].rowIndex === "NEW_NATURAL"));
+        let cols = Math.max(1, Math.min(3, appState.sueldosVisibleAdelantos));
         let thHtml = `<tr><th class="text-left">Nombre</th>`;
         for (let i = 0; i < cols; i++) { thHtml += `<th class="text-right">Adelanto ${i+1}</th><th class="text-left" style="width:100px;">Fecha</th>`; }
         thHtml += `<th class="text-right">Total</th></tr>`; thead.innerHTML = thHtml;
@@ -430,12 +398,11 @@ window.renderSueldos = function() {
         let grandTotal = 0;
         activeWorkers.forEach(w => {
             if(w.rowIndex === "NEW_NATURAL" && !appState.sueldosEditMode) return;
-            const r = w.rowData; const nom = r[offset] || r[0] || ""; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", w.rowIndex);
-            let rowHtml = "";
-            if (appState.sueldosEditMode) { rowHtml += `<td><input type="text" class="sueldos-minimal-input s-nom" value="${nom}" placeholder="Nombre..."></td>`; } else { rowHtml += `<td style="font-weight:600;">${nom}</td>`; }
+            const r = w.rowData; const nom = r[IDX_NOM] || ""; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", w.rowIndex);
+            let rowHtml = ""; if (appState.sueldosEditMode) { rowHtml += `<td><input type="text" class="sueldos-minimal-input s-nom" value="${nom}" placeholder="Nombre..."></td>`; } else { rowHtml += `<td style="font-weight:600;">${nom}</td>`; }
             let rowTotal = 0;
             for (let i = 0; i < cols; i++) {
-                const idxM = offset + 4 + (i*2); const idxF = offset + 5 + (i*2); let valM = Math.abs(parseMonto(r[idxM])); rowTotal += valM;
+                const idxM = IDX_AD_START + (i*2); const idxF = IDX_AD_START + 1 + (i*2); let valM = Math.abs(parseMonto(r[idxM])); rowTotal += valM;
                 if (appState.sueldosEditMode) { rowHtml += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-ad-val ad-col-${i}" value="${valM || ''}" style="text-align:right;"></td><td><input type="text" class="sueldos-minimal-input s-ad-fec ad-fec-${i}" data-raw="${r[idxF]||''}" value="${formatDateToAR(r[idxF])}" placeholder="DD/MM/AA"></td>`; } 
                 else { rowHtml += `<td class="text-right">${formatArgentineCurrency(valM)}</td><td>${formatDateToAR(r[idxF])||'-'}</td>`; }
             }
@@ -450,208 +417,131 @@ window.renderSueldos = function() {
         const thead = document.getElementById("liq-thead"); const tbody = document.getElementById("liq-tbody"); tbody.innerHTML = "";
         document.getElementById("liq-empty-state").classList.toggle("hidden", activeWorkers.length === 0 || (activeWorkers.length === 1 && activeWorkers[0].rowIndex === "NEW_NATURAL"));
         
-        let showPlus = appState.sueldosShowPlus || activeWorkers.some(w => parseMonto(w.rowData[offset+14]) !== 0);
-        let showDeb = appState.sueldosShowDebito || activeWorkers.some(w => parseMonto(w.rowData[offset+16]) !== 0);
-        let showAgui = appState.sueldosShowAguinaldo || activeWorkers.some(w => parseMonto(w.rowData[offset+18]) !== 0);
-        let hasAdelantos = activeWorkers.some(w => { let tot=0; for(let a=0;a<5;a++) tot+=Math.abs(parseMonto(w.rowData[offset+4+(a*2)])); return tot > 0; });
+        let showDeb = appState.sueldosShowDebito || activeWorkers.some(w => parseMonto(w.rowData[IDX_DEB_M]) !== 0);
+        let showAgui = appState.sueldosShowAguinaldo || activeWorkers.some(w => parseMonto(w.rowData[IDX_AGUI]) !== 0);
+        let hasAdelantos = activeWorkers.some(w => { let tot=0; for(let a=0;a<3;a++) tot+=Math.abs(parseMonto(w.rowData[IDX_AD_START+(a*2)])); return tot > 0; });
 
-        let thHtml = `<tr><th class="text-left">Nombre</th><th class="text-center" style="width:60px;">Hs</th><th class="text-right">P/Hr</th>`;
+        let thHtml = `<tr><th class="text-left">Nombre</th><th class="text-center" style="width:50px;">Hs</th><th class="text-right">P/Hr</th>`;
         if (hasAdelantos || appState.sueldosEditMode) thHtml += `<th class="text-right">Adelantos</th>`;
-        if (showPlus) thHtml += `<th class="text-right">Plus</th><th class="text-left">Detalle</th>`;
+        for(let i=0; i<maxPlusUsados; i++) { thHtml += `<th class="text-right">Plus ${i+1}</th><th class="text-left">Detalle ${i+1}</th>`; }
         if (showDeb) thHtml += `<th class="text-right">Débito</th><th class="text-left">Detalle</th>`;
         if (showAgui) thHtml += `<th class="text-right">Aguinaldo</th>`;
-        thHtml += `<th class="text-right">Sueldo Final</th><th class="text-center">Efectivo</th><th class="text-center">Transf.</th><th class="text-left" style="width:100px;">F. Pago</th>`;
+        thHtml += `<th class="text-right">Sueldo Final</th><th class="text-center">Efectivo</th><th class="text-center">Transf.</th><th class="text-left" style="width:80px;">F. Pago</th>`;
         if (appState.sueldosEditMode) thHtml += `<th class="text-center sticky-col">Acción</th>`;
         thHtml += `</tr>`; thead.innerHTML = thHtml;
 
         activeWorkers.forEach(w => {
             if(w.rowIndex === "NEW_NATURAL" && !appState.sueldosEditMode) return;
-            const r = w.rowData; const nom = r[offset] || r[0] || ""; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", w.rowIndex);
-            let sumAdelantos = 0; for(let a=0; a<5; a++) { sumAdelantos += Math.abs(parseMonto(r[offset+4+(a*2)])); }
+            const r = w.rowData; const nom = r[IDX_NOM] || ""; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", w.rowIndex);
+            let sumAd = 0; for(let a=0; a<3; a++) { sumAd += Math.abs(parseMonto(r[IDX_AD_START+(a*2)])); }
             
             if (appState.sueldosEditMode) {
-                let rowH = `<td><input type="text" class="sueldos-minimal-input s-nom" value="${nom}" placeholder="Escribir nombre..." style="min-width: 140px;"></td>`;
-                rowH += `<td><input type="text" class="sueldos-minimal-input s-hor calc-trig" value="${r[offset+2] || ''}" style="width:60px; text-align:center;" placeholder="0"></td>`;
-                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-ph calc-trig" value="${parseMonto(r[offset+3]) || ''}" style="width:80px; text-align:right;" placeholder="0.00"></td>`;
+                let rowH = `<td><input type="text" class="sueldos-minimal-input s-nom" value="${nom}" placeholder="..." style="min-width: 120px;"></td>`;
+                rowH += `<td><input type="text" class="sueldos-minimal-input s-hor calc-trig" value="${r[IDX_HOR] || ''}" style="width:45px; text-align:center;"></td>`;
+                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-ph calc-trig" value="${parseMonto(r[IDX_PH]) || ''}" style="width:65px; text-align:right;"></td>`;
                 
-                if (hasAdelantos || appState.sueldosEditMode) rowH += `<td class="text-right"><span class="val-adelantos" data-val="${sumAdelantos}">${sumAdelantos > 0 ? '-$ '+sumAdelantos.toFixed(2) : '-'}</span></td>`;
+                if (hasAdelantos || appState.sueldosEditMode) rowH += `<td class="text-right"><span class="val-adelantos" data-val="${sumAd}">${sumAd > 0 ? '-$ '+sumAd.toFixed(2) : '-'}</span></td>`;
                 
-                if (showPlus) rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-plus calc-trig" value="${Math.abs(parseMonto(r[offset+14])) || ''}" style="width:70px; text-align:right;"></td><td><input type="text" class="sueldos-minimal-input s-plus-det" value="${r[offset+15] || ''}" style="min-width:100px;"></td>`;
-                if (showDeb) rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-deb calc-trig" value="${Math.abs(parseMonto(r[offset+16])) || ''}" style="width:70px; text-align:right;"></td><td><input type="text" class="sueldos-minimal-input s-deb-det" value="${r[offset+17] || ''}" style="min-width:100px;"></td>`;
-                if (showAgui) rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-agui calc-trig" value="${Math.abs(parseMonto(r[offset+18])) || ''}" style="width:80px; text-align:right;"></td>`;
-                
-                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-sue" style="font-weight:bold; text-align:right; width:90px;" value="${Math.abs(parseMonto(r[offset+22])) || ''}"></td>`;
-                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-me" value="${Math.abs(parseMonto(r[offset+19])) || ''}" style="width:80px; text-align:center;"></td>`;
-                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-mt" value="${Math.abs(parseMonto(r[offset+20])) || ''}" style="width:80px; text-align:center;"></td>`;
-                rowH += `<td><input type="text" class="sueldos-minimal-input s-fp" data-raw="${r[offset+21] || ''}" value="${formatDateToAR(r[offset+21])}" placeholder="DD/MM/AA" style="width:90px;"></td>`;
-                
-                if (w.rowIndex === "NEW_NATURAL") {
-                    rowH += `<td class="action-buttons sticky-col"><span style="font-size:8pt; color:var(--text-secondary);">Nuevo</span></td>`;
-                } else {
-                    rowH += `<td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="window.archiveWorker(this, ${w.rowIndex})" style="padding: 2px 6px;">Borrar</button></td>`;
+                for(let i=0; i<maxPlusUsados; i++) {
+                    rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-plus calc-trig pl-m-${i}" value="${Math.abs(parseMonto(r[IDX_PLUS_START+(i*2)])) || ''}" style="width:65px; text-align:right;"></td>`;
+                    rowH += `<td><input type="text" class="sueldos-minimal-input s-plus-det pl-d-${i}" value="${r[IDX_PLUS_START+(i*2)+1] || ''}" style="min-width:90px;"></td>`;
                 }
+
+                if (showDeb) rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-deb calc-trig" value="${Math.abs(parseMonto(r[IDX_DEB_M])) || ''}" style="width:65px; text-align:right;"></td><td><input type="text" class="sueldos-minimal-input s-deb-det" value="${r[IDX_DEB_D] || ''}" style="min-width:90px;"></td>`;
+                if (showAgui) rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-agui calc-trig" value="${Math.abs(parseMonto(r[IDX_AGUI])) || ''}" style="width:70px; text-align:right;"></td>`;
+                
+                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-sue" style="font-weight:bold; text-align:right; width:80px;" value="${Math.abs(parseMonto(r[IDX_SUE])) || ''}"></td>`;
+                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-me" value="${Math.abs(parseMonto(r[IDX_ME])) || ''}" style="width:70px; text-align:center;"></td>`;
+                rowH += `<td><input type="number" step="0.01" class="sueldos-minimal-input s-mt" value="${Math.abs(parseMonto(r[IDX_MT])) || ''}" style="width:70px; text-align:center;"></td>`;
+                rowH += `<td><input type="text" class="sueldos-minimal-input s-fp" data-raw="${r[IDX_FP] || ''}" value="${formatDateToAR(r[IDX_FP])}" placeholder="DD/MM/AA" style="width:80px;"></td>`;
+                rowH += `<td class="action-buttons sticky-col">${w.rowIndex === "NEW_NATURAL" ? '<span style="font-size:8pt; color:gray;">Nuevo</span>' : `<button class="action-btn btn-delete" onclick="window.archiveWorker(this, ${w.rowIndex})" style="padding: 2px 6px;">Borrar</button>`}</td>`;
                 tr.innerHTML = rowH;
                 
                 const calcFinal = () => {
-                    let h = parseFloat((tr.querySelector('.s-hor').value || "0").toString().replace(',','.')) || 0;
-                    let p = parseFloat(tr.querySelector('.s-ph').value) || 0;
-                    let ad = parseFloat(tr.querySelector('.val-adelantos').getAttribute('data-val')) || 0;
-                    let pl = tr.querySelector('.s-plus') ? (parseFloat(tr.querySelector('.s-plus').value) || 0) : 0;
-                    let de = tr.querySelector('.s-deb') ? (parseFloat(tr.querySelector('.s-deb').value) || 0) : 0;
-                    let ag = tr.querySelector('.s-agui') ? (parseFloat(tr.querySelector('.s-agui').value) || 0) : 0;
-                    
-                    let final = (h * p) - ad + pl - de + ag;
-                    tr.querySelector('.s-sue').value = final > 0 ? final.toFixed(2) : "";
+                    let h = parseFloat((tr.querySelector('.s-hor').value || "0").replace(',','.')) || 0; let p = parseFloat(tr.querySelector('.s-ph').value) || 0; let ad = parseFloat(tr.querySelector('.val-adelantos').getAttribute('data-val')) || 0;
+                    let plTotal = 0; for(let i=0; i<maxPlusUsados; i++) { const input = tr.querySelector(`.pl-m-${i}`); if(input) plTotal += (parseFloat(input.value) || 0); }
+                    let de = tr.querySelector('.s-deb') ? (parseFloat(tr.querySelector('.s-deb').value) || 0) : 0; let ag = tr.querySelector('.s-agui') ? (parseFloat(tr.querySelector('.s-agui').value) || 0) : 0;
+                    let final = (h * p) - ad + plTotal - de + ag; tr.querySelector('.s-sue').value = final > 0 ? final.toFixed(2) : "";
                 };
                 tr.querySelectorAll('.calc-trig').forEach(i => i.addEventListener('input', calcFinal));
                 
             } else {
-                let methodStr = "-"; const valE = Math.abs(parseMonto(r[offset+19])); const valT = Math.abs(parseMonto(r[offset+20])); 
-                if (valE > 0 && valT > 0) methodStr = `E: ${formatArgentineCurrency(valE)}<br>T: ${formatArgentineCurrency(valT)}`; else if (valE > 0) methodStr = `Efvo`; else if (valT > 0) methodStr = `Transf`;
-                
-                let rowH = `<td style="font-weight:600;">${nom}</td><td class="text-center">${r[offset+2] || '-'}</td><td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+3]))}</td>`;
-                if (hasAdelantos) rowH += `<td class="text-right">${sumAdelantos > 0 ? formatArgentineCurrency(sumAdelantos) : '-'}</td>`;
-                if (showPlus) rowH += `<td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+14]))}</td><td class="text-left" style="font-size:8.5pt;">${r[offset+15]||'-'}</td>`;
-                if (showDeb) rowH += `<td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+16]))}</td><td class="text-left" style="font-size:8.5pt;">${r[offset+17]||'-'}</td>`;
-                if (showAgui) rowH += `<td class="text-right">${formatArgentineCurrency(parseMonto(r[offset+18]))}</td>`;
-                rowH += `<td class="text-right" style="font-weight:700;">${formatArgentineCurrency(parseMonto(r[offset+22]))}</td><td class="text-center">${formatArgentineCurrency(parseMonto(r[offset+19]))}</td><td class="text-center">${formatArgentineCurrency(parseMonto(r[offset+20]))}</td><td>${formatDateToAR(r[offset+21])||'-'}</td>`;
+                let rowH = `<td style="font-weight:600;">${nom}</td><td class="text-center">${r[IDX_HOR] || '-'}</td><td class="text-right">${formatArgentineCurrency(parseMonto(r[IDX_PH]))}</td>`;
+                if (hasAdelantos) rowH += `<td class="text-right">${sumAd > 0 ? formatArgentineCurrency(sumAd) : '-'}</td>`;
+                for(let i=0; i<maxPlusUsados; i++) { rowH += `<td class="text-right text-success">${formatArgentineCurrency(parseMonto(r[IDX_PLUS_START+(i*2)]))}</td><td class="text-left" style="font-size:8.5pt;">${r[IDX_PLUS_START+(i*2)+1]||'-'}</td>`; }
+                if (showDeb) rowH += `<td class="text-right text-danger">${formatArgentineCurrency(parseMonto(r[IDX_DEB_M]))}</td><td class="text-left" style="font-size:8.5pt;">${r[IDX_DEB_D]||'-'}</td>`;
+                if (showAgui) rowH += `<td class="text-right text-warning">${formatArgentineCurrency(parseMonto(r[IDX_AGUI]))}</td>`;
+                rowH += `<td class="text-right" style="font-weight:700;">${formatArgentineCurrency(parseMonto(r[IDX_SUE]))}</td><td class="text-center">${formatArgentineCurrency(parseMonto(r[IDX_ME]))}</td><td class="text-center">${formatArgentineCurrency(parseMonto(r[IDX_MT]))}</td><td>${formatDateToAR(r[IDX_FP])||'-'}</td>`;
                 tr.innerHTML = rowH;
             }
             tbody.appendChild(tr);
         });
     }
-}
+};
 
-// ==========================================
-// BALANCES Y PROVEEDORES (RESTO DE FUNCIONES UI Y LÓGICA DE TABLAS)
-// ==========================================
-function setupAccordions(c) { 
-    c.querySelectorAll(".accordion-header").forEach(h => h.onclick = function() { 
-        const i = this.parentElement; const b = this.nextElementSibling; 
-        i.classList.toggle("open"); 
-        b.style.maxHeight = i.classList.contains("open") ? b.scrollHeight + "px" : null; 
-    }); 
-}
+window.archiveWorker = function(btn, rowIndex) { 
+    if(!confirm("¿Quitar trabajador de la liquidación de ESTE MES?")) return; 
+    const monthName = MESES_NOMBRES[parseInt(appState.sueldosMonth) - 1]; const yearStr = appState.sueldosYear; const tabName = `${monthName} ${yearStr}`;
+    let worker = appState.sueldos[tabName].find(w => w.rowIndex === rowIndex); if (!worker) return; 
+    for (let i = 0; i < 33; i++) worker.rowData[i] = ""; 
+    fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_BATCH", data: { year: yearStr, monthName: monthName, rows: [{rowIndex: rowIndex, rowData: worker.rowData}] } }) }).then(() => fetchFinancialDataSilent()); 
+    btn.closest("tr").remove();
+};
 
-function populateSidebarHistory() { 
-    const gList = document.getElementById("sidebar-gastos-list"); 
-    const iList = document.getElementById("sidebar-ingresos-list"); 
-    if (!gList || !iList) return;
-    gList.innerHTML = ""; iList.innerHTML = ""; 
-    if (!appState.balances) return; 
-    
-    Object.keys(appState.balances.gastos).forEach(sheet => { 
-        const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheet; 
-        btn.onclick = () => openHistoryView(sheet, "gastos", btn); 
-        gList.appendChild(btn); 
-    }); 
-    const btnI = document.createElement("button"); btnI.className = "history-btn"; btnI.textContent = "Ingresos"; 
-    btnI.onclick = () => openHistoryView("Ingresos", "ingresos", btnI); 
-    iList.appendChild(btnI); 
-}
+window.saveSueldos = async function() {
+    const tab = appState.activeSueldosTab; const tbodyId = tab === "adelantos" ? "adelantos-tbody" : "liq-tbody"; const tbody = document.getElementById(tbodyId); if(!tbody) return;
+    const monthName = MESES_NOMBRES[parseInt(appState.sueldosMonth) - 1]; const yearStr = appState.sueldosYear; const tabName = `${monthName} ${yearStr}`;
+    let batchRows = []; const rows = tbody.querySelectorAll("tr"); 
+    for (let tr of rows) { 
+        let rowIndex = tr.getAttribute("data-row-index"); const isNaturalAdd = (rowIndex === "NEW_NATURAL"); if (isNaturalAdd) rowIndex = null; else rowIndex = parseInt(rowIndex); 
+        let workerObj = null; if (rowIndex && appState.sueldos[tabName]) workerObj = appState.sueldos[tabName].find(w => w.rowIndex === rowIndex); 
+        let finalRowData = workerObj ? [...workerObj.rowData] : Array(33).fill(""); 
+        const getVal = (selector) => { const el = tr.querySelector(selector); return el ? el.value : ""; }; const nombreLeido = getVal('.s-nom');
+        if (isNaturalAdd && nombreLeido.trim() === "") continue;
 
-function populateCuentasDropdown() { 
-    const select = document.getElementById("new-op-cuenta"); 
-    if (!select || !appState.balances) return; 
-    select.innerHTML = '<option value="">-- Seleccione una cuenta --</option>'; 
-    const optgroupI = document.createElement("optgroup"); optgroupI.label = "INGRESOS"; 
-    const optI = document.createElement("option"); optI.value = "Ingresos"; optI.textContent = "Ingresos"; optgroupI.appendChild(optI); select.appendChild(optgroupI); 
-    const optgroupG = document.createElement("optgroup"); optgroupG.label = "GASTOS"; 
-    Object.keys(appState.balances.gastos).forEach(s => { 
-        if(s === "Sueldos") return; 
-        const opt = document.createElement("option"); opt.value = s; opt.textContent = s; optgroupG.appendChild(opt); 
-    }); 
-    select.appendChild(optgroupG); 
-}
-
-function renderBalance() {
-    if (!appState.balances) return; const pk = `${appState.selectedYear}-${appState.selectedMonth}`; let tg = 0; let ti = 0; let mc = 0; const gList = document.getElementById("gastos-list"); gList.innerHTML = "";
-    Object.keys(appState.balances.gastos).forEach(s => {
-        const pd = appState.balances.gastos[s]?.[pk]; if (!pd || pd.length === 0) return; let ct = 0; let rh = ""; const isSueldos = (s === "Sueldos");
-        pd.forEach(m => { const a = Math.abs(m.monto); ct += a; mc++; if (isSueldos) rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; else rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; }); tg += ct;
-        const theadHtml = isSueldos ? `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th></tr>` : `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr>`;
-        const ac = document.createElement("div"); ac.className = "accordion-item"; ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">${s}</span></div><span class="item-val">${formatArgentineCurrency(ct)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0; border:none;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead>${theadHtml}</thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="${isSueldos ? '2' : '3'}" class="text-right">TOTAL PESTAÑA</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`; gList.appendChild(ac);
-    });
-    document.getElementById("total-gastos-value").textContent = formatArgentineCurrency(tg); setupAccordions(gList);
-    const iList = document.getElementById("ingresos-list"); iList.innerHTML = ""; const id = appState.balances.ingresos["Ingresos"]?.[pk];
-    if (id && id.length > 0) {
-        let rh = ""; let ct = 0; id.forEach(m => { ti += m.monto; ct += m.monto; mc++; rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(m.monto)}</td></tr>`; });
-        const ac = document.createElement("div"); ac.className = "accordion-item"; ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">Ingresos</span></div><span class="item-val">${formatArgentineCurrency(ti)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead><tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr></thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="3" class="text-right">TOTAL INGRESOS</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`; iList.appendChild(ac); setupAccordions(iList);
+        if (tab === "adelantos") {
+            finalRowData[IDX_NOM] = nombreLeido;
+            for (let a = 0; a < 3; a++) {
+                const inpVal = tr.querySelector(`.ad-col-${a}`); const inpFec = tr.querySelector(`.ad-fec-${a}`);
+                if (inpVal) finalRowData[IDX_AD_START + (a*2)] = inpVal.value;
+                if (inpFec) finalRowData[IDX_AD_START + 1 + (a*2)] = getValDate(`.ad-fec-${a}`, tr);
+            }
+        } else if (tab === "liquidacion-sueldos") {
+            finalRowData[IDX_NOM] = nombreLeido; finalRowData[IDX_HOR] = getVal('.s-hor'); finalRowData[IDX_PH] = getVal('.s-ph'); 
+            let plusIndex = 0; while (tr.querySelector(`.pl-m-${plusIndex}`)) { finalRowData[IDX_PLUS_START + (plusIndex*2)] = getVal(`.pl-m-${plusIndex}`); finalRowData[IDX_PLUS_START + (plusIndex*2) + 1] = getVal(`.pl-d-${plusIndex}`); plusIndex++; }
+            if (tr.querySelector('.s-deb')) { finalRowData[IDX_DEB_M] = getVal('.s-deb'); finalRowData[IDX_DEB_D] = getVal('.s-deb-det'); }
+            if (tr.querySelector('.s-agui')) finalRowData[IDX_AGUI] = getVal('.s-agui');
+            finalRowData[IDX_ME] = getVal('.s-me'); finalRowData[IDX_MT] = getVal('.s-mt'); finalRowData[IDX_FP] = getValDate('.s-fp', tr); 
+            let finalSue = getVal('.s-sue'); if (finalSue !== "" && parseFloat(finalSue) > 0) finalRowData[IDX_SUE] = "-" + finalSue; else finalRowData[IDX_SUE] = finalSue;
+        }
+        batchRows.push({ rowIndex: rowIndex, rowData: finalRowData });
     }
-    document.getElementById("total-ingresos-value").textContent = formatArgentineCurrency(ti); document.getElementById("empty-state").classList.toggle("hidden", mc > 0); document.getElementById("balance-content-wrapper").classList.toggle("hidden", mc === 0);
-    const nb = ti - tg; document.getElementById("final-balance-value").textContent = formatFinalBalance(nb); document.getElementById("final-balance-value").className = `final-amount text-right ${nb >= 0 ? 'text-success' : 'text-danger'}`; document.getElementById("balance-result-card").className = `card balance-result-card ${nb >= 0 ? 'positive' : 'negative'}`;
-}
+    appState.sueldosEditMode = false; window.renderSueldos(); showToast("Guardando lote de datos...");
+    try { await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "SUELDO_SAVE_BATCH", data: { year: yearStr, monthName: monthName, rows: batchRows } }) }); showToast("¡Guardado exitoso!"); fetchFinancialDataSilent(); } catch { showToast("Error al guardar."); fetchFinancialData(); }
+};
 
+// ==========================================
+// BALANCES Y PROVEEDORES (LÓGICA DE TABLAS)
+// ==========================================
+function setupAccordions(c) { c.querySelectorAll(".accordion-header").forEach(h => h.onclick = function() { const i = this.parentElement; const b = this.nextElementSibling; i.classList.toggle("open"); b.style.maxHeight = i.classList.contains("open") ? b.scrollHeight + "px" : null; }); }
+function populateSidebarHistory() { const gList = document.getElementById("sidebar-gastos-list"); const iList = document.getElementById("sidebar-ingresos-list"); if (!gList || !iList) return; gList.innerHTML = ""; iList.innerHTML = ""; if (!appState.balances) return; Object.keys(appState.balances.gastos).forEach(sheet => { const btn = document.createElement("button"); btn.className = "history-btn"; btn.textContent = sheet; btn.onclick = () => openHistoryView(sheet, "gastos", btn); gList.appendChild(btn); }); const btnI = document.createElement("button"); btnI.className = "history-btn"; btnI.textContent = "Ingresos"; btnI.onclick = () => openHistoryView("Ingresos", "ingresos", btnI); iList.appendChild(btnI); }
+function populateCuentasDropdown() { const select = document.getElementById("new-op-cuenta"); if (!select || !appState.balances) return; select.innerHTML = '<option value="">-- Seleccione una cuenta --</option>'; const optgroupI = document.createElement("optgroup"); optgroupI.label = "INGRESOS"; const optI = document.createElement("option"); optI.value = "Ingresos"; optI.textContent = "Ingresos"; optgroupI.appendChild(optI); select.appendChild(optgroupI); const optgroupG = document.createElement("optgroup"); optgroupG.label = "GASTOS"; Object.keys(appState.balances.gastos).forEach(s => { if(s === "Sueldos") return; const opt = document.createElement("option"); opt.value = s; opt.textContent = s; optgroupG.appendChild(opt); }); select.appendChild(optgroupG); }
+function renderBalance() { if (!appState.balances) return; const pk = `${appState.selectedYear}-${appState.selectedMonth}`; let tg = 0; let ti = 0; let mc = 0; const gList = document.getElementById("gastos-list"); gList.innerHTML = ""; Object.keys(appState.balances.gastos).forEach(s => { const pd = appState.balances.gastos[s]?.[pk]; if (!pd || pd.length === 0) return; let ct = 0; let rh = ""; const isSueldos = (s === "Sueldos"); pd.forEach(m => { const a = Math.abs(m.monto); ct += a; mc++; if (isSueldos) rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; else rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(a)}</td></tr>`; }); tg += ct; const theadHtml = isSueldos ? `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th></tr>` : `<tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr>`; const ac = document.createElement("div"); ac.className = "accordion-item"; ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">${s}</span></div><span class="item-val">${formatArgentineCurrency(ct)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0; border:none;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead>${theadHtml}</thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="${isSueldos ? '2' : '3'}" class="text-right">TOTAL PESTAÑA</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`; gList.appendChild(ac); }); document.getElementById("total-gastos-value").textContent = formatArgentineCurrency(tg); setupAccordions(gList); const iList = document.getElementById("ingresos-list"); iList.innerHTML = ""; const id = appState.balances.ingresos["Ingresos"]?.[pk]; if (id && id.length > 0) { let rh = ""; let ct = 0; id.forEach(m => { ti += m.monto; ct += m.monto; mc++; rh += `<tr><td>${m.fecha}</td><td>${m.detalle||"-"}</td><td>${m.operacion||"-"}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(m.monto)}</td></tr>`; }); const ac = document.createElement("div"); ac.className = "accordion-item"; ac.innerHTML = `<div class="accordion-header"><div class="accordion-title-group"><svg class="accordion-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg><span class="item-name">Ingresos</span></div><span class="item-val">${formatArgentineCurrency(ti)}</span></div><div class="accordion-body"><div class="accordion-content" style="padding-top:0; padding-bottom:0;"><div class="table-responsive"><table class="detail-table" style="margin:0;"><thead><tr><th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-left">Operación</th><th class="text-right">Monto</th></tr></thead><tbody>${rh}</tbody><tfoot><tr class="table-total-row"><td colspan="3" class="text-right">TOTAL INGRESOS</td><td class="text-right" style="color:var(--text-primary);">${formatArgentineCurrency(ct)}</td></tr></tfoot></table></div></div></div>`; iList.appendChild(ac); setupAccordions(iList); } document.getElementById("total-ingresos-value").textContent = formatArgentineCurrency(ti); document.getElementById("empty-state").classList.toggle("hidden", mc > 0); document.getElementById("balance-content-wrapper").classList.toggle("hidden", mc === 0); const nb = ti - tg; document.getElementById("final-balance-value").textContent = formatFinalBalance(nb); document.getElementById("final-balance-value").className = `final-amount text-right ${nb >= 0 ? 'text-success' : 'text-danger'}`; document.getElementById("balance-result-card").className = `card balance-result-card ${nb >= 0 ? 'positive' : 'negative'}`; }
 function renderAnnualSummary() { if (!appState.balances) return; const y = appState.selectedYear; let tg = 0; let ti = 0; Object.keys(appState.balances.gastos).forEach(s => { const sm = appState.balances.gastos[s]||{}; for (const p in sm) { if (p.startsWith(`${y}-`)) sm[p].forEach(m => tg += Math.abs(m.monto)); } }); const im = appState.balances.ingresos["Ingresos"]||{}; for (const p in im) { if (p.startsWith(`${y}-`)) im[p].forEach(m => ti += m.monto); } document.getElementById("annual-ingresos").textContent = formatArgentineCurrency(ti); document.getElementById("annual-gastos").textContent = formatArgentineCurrency(tg); const nb = ti - tg; document.getElementById("annual-balance").textContent = formatFinalBalance(nb); document.getElementById("annual-balance").className = `text-right font-weight-bold ${nb >= 0 ? 'text-success' : 'text-danger'}`; }
 
-function openHistoryView(s, t, b) {
-    if (!appState.balances) return; document.querySelectorAll(".menu-btn, .history-btn").forEach(btn => btn.classList.remove("active")); b.classList.add("active"); document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active")); document.getElementById("view-historial").classList.add("active"); document.getElementById("tab-subtitle").textContent = s; document.getElementById("historial-title").textContent = `Registros: ${s}`; appState.currentHistorySheet = s; appState.currentHistoryType = t;
-    const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear()); document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y; appState.historyMonth = m; appState.historyYear = y; appState.historialEditMode = false; if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").classList.add("hidden"); if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").classList.add("hidden");
-    const theadTr = document.getElementById("historial-thead-tr");
-    if (s === "Sueldos") { if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").classList.add("hidden"); document.getElementById("carpetas-config-section").classList.add("hidden"); theadTr.innerHTML = `<th class="text-left">Nombre</th><th class="text-right">Monto</th><th class="text-left">Fecha de Pago</th><th class="text-left">Mes</th><th class="text-left">Método Pago</th><th class="text-right">Precio/Hora</th><th class="text-center">Horas</th>`; } 
-    else { if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").classList.remove("hidden"); renderCarpetasSection(s); let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`; theadTr.innerHTML = `<th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th><th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th><th class="text-left">IVA Cont.</th>${extraCol}`; }
-    renderHistoryTable();
-}
-
+function openHistoryView(s, t, b) { if (!appState.balances) return; document.querySelectorAll(".menu-btn, .history-btn").forEach(btn => btn.classList.remove("active")); b.classList.add("active"); document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active")); document.getElementById("view-historial").classList.add("active"); document.getElementById("tab-subtitle").textContent = s; document.getElementById("historial-title").textContent = `Registros: ${s}`; appState.currentHistorySheet = s; appState.currentHistoryType = t; const today = new Date(); const m = String(today.getMonth() + 1).padStart(2, '0'); const y = String(today.getFullYear()); document.getElementById("historial-month").value = m; document.getElementById("historial-year").value = y; appState.historyMonth = m; appState.historyYear = y; appState.historialEditMode = false; if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").classList.add("hidden"); if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").classList.add("hidden"); const theadTr = document.getElementById("historial-thead-tr"); if (s === "Sueldos") { if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").classList.add("hidden"); document.getElementById("carpetas-config-section").classList.add("hidden"); theadTr.innerHTML = `<th class="text-left">Nombre</th><th class="text-right">Monto</th><th class="text-left">Fecha de Pago</th><th class="text-left">Mes</th><th class="text-left">Método Pago</th><th class="text-right">Precio/Hora</th><th class="text-center">Horas</th>`; } else { if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").classList.remove("hidden"); renderCarpetasSection(s); let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`; theadTr.innerHTML = `<th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th><th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th><th class="text-left">IVA Cont.</th>${extraCol}`; } renderHistoryTable(); }
 function toggleHistorialEditMode(isEdit) { appState.historialEditMode = isEdit; if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").classList.toggle("hidden", isEdit); if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").classList.toggle("hidden", !isEdit); if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").classList.toggle("hidden", !isEdit); renderHistoryTable(); }
 
-function renderHistoryTable() {
-    const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = []; const s = appState.currentHistorySheet; const t = appState.currentHistoryType; 
-    if (!s || !appState.balances || !appState.balances[t] || !appState.balances[t][s]) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); return; }
-    const tm = appState.balances[t][s];
-    if (s !== "Sueldos") { const theadTr = document.getElementById("historial-thead-tr"); let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`; theadTr.innerHTML = `<th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th><th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th><th class="text-left">IVA Cont.</th>${extraCol}`; }
-    for (const p in tm) { const [y, month] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; if (tm[p]) fm = fm.concat(tm[p]); }
-    if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } 
-    else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); }
-}
-
-function createBalanceRowHTML(m) {
-    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", m.rowIndex || "NEW");
-    if (m.isVirtual) { tr.innerHTML = `<td class="text-left" style="font-weight:600;">${m.detalle}</td><td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(m.monto)}</td><td class="text-left">${m.fecha}</td><td class="text-left">${m.mes}</td><td class="text-left">${m.metodoPago}</td><td class="text-right">${m.precioHora === "-" ? "-" : formatArgentineCurrency(m.precioHora)}</td><td class="text-center">${m.horas}</td>`; return tr; }
-    if (appState.historialEditMode) { tr.innerHTML = `<td><input type="text" class="edit-input i-fec" data-raw="${m.fecha||''}" value="${formatDateToAR(m.fecha)}" placeholder="DD/MM/AAAA"></td><td><input type="text" class="edit-input i-det" value="${m.detalle||''}"></td><td><input type="number" step="0.01" class="edit-input i-mon" value="${Math.abs(m.monto)||''}"></td><td><input type="text" class="edit-input i-ope" value="${m.operacion||''}" placeholder="Operación"></td><td><input type="text" class="edit-input i-i21" value="${m.iva21||''}"></td><td><input type="text" class="edit-input i-i105" value="${m.iva105||''}"></td><td><input type="text" class="edit-input i-icon" value="${m.ivaCont||''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="deleteBalanceUI(this, ${m.rowIndex||'null'})">Borrar</button></td>`; } 
-    else { const compHTML_C = m.idComprobanteCompra ? `<a href="https://drive.google.com/file/d/${m.idComprobanteCompra}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'compra', '${t}')">Subir</button>`; const compHTML_P = m.idComprobantePago ? `<a href="https://drive.google.com/file/d/${m.idComprobantePago}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'pago', '${t}')">Subir</button>`; tr.innerHTML = `<td>${formatDateToAR(m.fecha)||'-'}</td><td>${m.detalle||'-'}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(t==='gastos'?Math.abs(m.monto):m.monto)}</td><td>${m.operacion||'-'}</td><td>${m.iva21||'-'}</td><td>${m.iva105||'-'}</td><td>${m.ivaCont||'-'}</td><td class="text-center">${compHTML_C}</td><td class="text-center">${compHTML_P}</td>`; } return tr;
-}
-
-window.deleteBalanceUI = function(btn, rowIndex) { if (!rowIndex || rowIndex === 'null') { btn.closest("tr").remove(); } else { if(confirm("¿Eliminar operación permanentemente?")) { btn.closest("tr").remove(); showToast("Borrando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "BAL_SAVE_BATCH", data: { sheetName: appState.currentHistorySheet, rows: [{rowIndex: rowIndex, isDelete: true}] } }) }).then(() => { showToast("Operación eliminada."); fetchFinancialDataSilent(); }); } } };
-
-async function saveHistorial() {
-    const s = appState.currentHistorySheet; const t = appState.currentHistoryType; const tbody = document.getElementById("historial-tbody"); const rows = tbody.querySelectorAll("tr"); let batchRows = [];
-    for (let tr of rows) { let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); let rm = parseMonto(tr.querySelector(".i-mon").value); if (t === 'gastos' && rm > 0) rm = -rm; let cc = "", cp = ""; if (rowIndex) { const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === rowIndex); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } } batchRows.push({ rowIndex: rowIndex, isDelete: false, fecha: getValDate('.i-fec', tr), detalle: tr.querySelector(".i-det").value, monto: rm, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idComprobanteCompra: cc, idComprobantePago: cp }); }
-    appState.historialEditMode = false; renderHistoryTable(); showToast("Guardando cambios...");
-    try { await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "BAL_SAVE_BATCH", data: { sheetName: s, rows: batchRows } }) }); showToast("¡Operaciones guardadas!"); fetchFinancialDataSilent(); } catch { showToast("Error al guardar."); fetchFinancialData(); }
-}
-
+function renderHistoryTable() { const tbody = document.getElementById("historial-tbody"); tbody.innerHTML = ""; let gt = 0; let fm = []; const s = appState.currentHistorySheet; const t = appState.currentHistoryType; if (!s || !appState.balances || !appState.balances[t] || !appState.balances[t][s]) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); return; } const tm = appState.balances[t][s]; if (s !== "Sueldos") { const theadTr = document.getElementById("historial-thead-tr"); let extraCol = appState.historialEditMode ? `<th class="text-center sticky-col">Acciones</th>` : `<th class="text-center">Comp. C</th><th class="text-center">Comp. P</th>`; theadTr.innerHTML = `<th class="text-left">Fecha</th><th class="text-left">Detalle</th><th class="text-right">Monto</th><th class="text-left">Operación</th><th class="text-left">IVA 21%</th><th class="text-left">IVA 10.5%</th><th class="text-left">IVA Cont.</th>${extraCol}`; } for (const p in tm) { const [y, month] = p.split("-"); if (appState.historyYear !== "ALL" && appState.historyYear !== y) continue; if (appState.historyMonth !== "ALL" && appState.historyMonth !== month) continue; if (tm[p]) fm = fm.concat(tm[p]); } if (fm.length === 0) { document.getElementById("historial-table").classList.add("hidden"); document.getElementById("historial-total-row").classList.add("hidden"); document.getElementById("historial-empty").classList.remove("hidden"); } else { fm.forEach(m => { gt += Math.abs(m.monto); tbody.appendChild(createBalanceRowHTML(m)); }); document.getElementById("historial-table").classList.remove("hidden"); document.getElementById("historial-total-row").classList.remove("hidden"); document.getElementById("historial-empty").classList.add("hidden"); document.getElementById("historial-total-value").textContent = formatArgentineCurrency(gt); } }
+function createBalanceRowHTML(m) { const s = appState.currentHistorySheet; const t = appState.currentHistoryType; const tr = document.createElement("tr"); tr.setAttribute("data-row-index", m.rowIndex || "NEW"); if (m.isVirtual) { tr.innerHTML = `<td class="text-left" style="font-weight:600;">${m.detalle}</td><td class="text-right" style="font-weight:700; color:var(--text-primary);">${formatArgentineCurrency(m.monto)}</td><td class="text-left">${m.fecha}</td><td class="text-left">${m.mes}</td><td class="text-left">${m.metodoPago}</td><td class="text-right">${m.precioHora === "-" ? "-" : formatArgentineCurrency(m.precioHora)}</td><td class="text-center">${m.horas}</td>`; return tr; } if (appState.historialEditMode) { tr.innerHTML = `<td><input type="text" class="edit-input i-fec" data-raw="${m.fecha||''}" value="${formatDateToAR(m.fecha)}" placeholder="DD/MM/AAAA"></td><td><input type="text" class="edit-input i-det" value="${m.detalle||''}"></td><td><input type="number" step="0.01" class="edit-input i-mon" value="${Math.abs(m.monto)||''}"></td><td><input type="text" class="edit-input i-ope" value="${m.operacion||''}" placeholder="Operación"></td><td><input type="text" class="edit-input i-i21" value="${m.iva21||''}"></td><td><input type="text" class="edit-input i-i105" value="${m.iva105||''}"></td><td><input type="text" class="edit-input i-icon" value="${m.ivaCont||''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="deleteBalanceUI(this, ${m.rowIndex||'null'})">Borrar</button></td>`; } else { const compHTML_C = m.idComprobanteCompra ? `<a href="https://drive.google.com/file/d/${m.idComprobanteCompra}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'compra', '${t}')">Subir</button>`; const compHTML_P = m.idComprobantePago ? `<a href="https://drive.google.com/file/d/${m.idComprobantePago}/view" target="_blank" class="action-btn btn-link" style="text-decoration:none;">Ver</a>` : `<button class="action-btn btn-secondary" style="border:1px solid var(--primary-color); color:var(--primary-color);" onclick="window.triggerUpload('${s}', ${m.rowIndex}, 'pago', '${t}')">Subir</button>`; tr.innerHTML = `<td>${formatDateToAR(m.fecha)||'-'}</td><td>${m.detalle||'-'}</td><td class="text-right" style="font-weight:600; color:var(--text-primary);">${formatArgentineCurrency(t==='gastos'?Math.abs(m.monto):m.monto)}</td><td>${m.operacion||'-'}</td><td>${m.iva21||'-'}</td><td>${m.iva105||'-'}</td><td>${m.ivaCont||'-'}</td><td class="text-center">${compHTML_C}</td><td class="text-center">${compHTML_P}</td>`; } return tr; }
+window.deleteBalanceUI = function(btn, rowIndex) { if (!rowIndex || rowIndex === 'null') { btn.closest("tr").remove(); } else { if(confirm("¿Eliminar permanentemente?")) { btn.closest("tr").remove(); showToast("Borrando..."); fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "BAL_SAVE_BATCH", data: { sheetName: appState.currentHistorySheet, rows: [{rowIndex: rowIndex, isDelete: true}] } }) }).then(() => { showToast("Eliminada."); fetchFinancialDataSilent(); }); } } };
+async function saveHistorial() { const s = appState.currentHistorySheet; const t = appState.currentHistoryType; const tbody = document.getElementById("historial-tbody"); const rows = tbody.querySelectorAll("tr"); let batchRows = []; for (let tr of rows) { let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); let rm = parseMonto(tr.querySelector(".i-mon").value); if (t === 'gastos' && rm > 0) rm = -rm; let cc = "", cp = ""; if (rowIndex) { const p = appState.balances[t][s]; for (let d in p) { let m = p[d].find(x => x.rowIndex === rowIndex); if (m) { cc = m.idComprobanteCompra; cp = m.idComprobantePago; break; } } } batchRows.push({ rowIndex: rowIndex, isDelete: false, fecha: getValDate('.i-fec', tr), detalle: tr.querySelector(".i-det").value, monto: rm, operacion: tr.querySelector(".i-ope").value, iva21: tr.querySelector(".i-i21").value, iva105: tr.querySelector(".i-i105").value, ivaCont: tr.querySelector(".i-icon").value, idComprobanteCompra: cc, idComprobantePago: cp }); } appState.historialEditMode = false; renderHistoryTable(); showToast("Guardando..."); try { await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "BAL_SAVE_BATCH", data: { sheetName: s, rows: batchRows } }) }); showToast("¡Guardado!"); fetchFinancialDataSilent(); } catch { showToast("Error al guardar."); fetchFinancialData(); } }
 window.triggerUpload = function(s, ri, ty, c) { appState.currentUpload = { sheetName: s, rowIndex: ri, type: ty, categoryType: c }; document.getElementById("global-file-input").click(); };
 function renderCarpetasSection(s) { const sec = document.getElementById("carpetas-config-section"); if(sec) sec.classList.remove("hidden"); const c = appState.carpetas[s] || { idCuenta: "", idCompra: "", idPago: "" }; document.getElementById("view-id-cuenta").textContent = c.idCuenta||"-"; document.getElementById("view-id-compra").textContent = c.idCompra||"-"; document.getElementById("view-id-pago").textContent = c.idPago||"-"; document.getElementById("edit-id-cuenta").value = c.idCuenta; document.getElementById("edit-id-compra").value = c.idCompra; document.getElementById("edit-id-pago").value = c.idPago; document.querySelectorAll("#carpetas-config-section .form-control").forEach(el => el.classList.remove("hidden")); document.querySelectorAll("#carpetas-config-section .edit-input").forEach(el => el.classList.add("hidden")); document.getElementById("btn-edit-carpetas").classList.remove("hidden"); document.getElementById("btn-save-carpetas").classList.add("hidden"); document.getElementById("btn-cancel-carpetas").classList.add("hidden"); }
 
 function toggleProveedoresEditMode(isEdit) { appState.proveedoresEditMode = isEdit; document.getElementById("btn-proveedores-edit-mode").classList.toggle("hidden", isEdit); document.getElementById("btn-proveedores-save").classList.toggle("hidden", !isEdit); document.getElementById("btn-proveedores-cancel").classList.toggle("hidden", !isEdit); document.getElementById("btn-proveedores-add").classList.toggle("hidden", !isEdit); renderProveedores(); }
-
-function renderProveedores() {
-    const thead = document.querySelector("#proveedores-table thead"); const tbody = document.getElementById("proveedores-tbody"); const cGen = appState.activeProvTab === 'gen' ? '' : 'hidden'; const cBan = appState.activeProvTab === 'ban' ? '' : 'hidden'; const cCon = appState.activeProvTab === 'con' ? '' : 'hidden'; let thHtml = `<tr><th class="text-left">Proveedor</th><th class="text-left">Nombre</th><th class="text-left col-prov-gen ${cGen}">Dirección</th><th class="text-left col-prov-ban ${cBan}">Banco</th><th class="text-left col-prov-ban ${cBan}">Alias</th><th class="text-left col-prov-ban ${cBan}">CBU</th><th class="text-left col-prov-con ${cCon}">Teléfono</th><th class="text-left col-prov-con ${cCon}">Mail</th><th class="text-center col-prov-con ${cCon}">Web</th>`; if (appState.proveedoresEditMode) thHtml += `<th class="text-center sticky-col">Acciones</th>`; thHtml += `</tr>`; thead.innerHTML = thHtml; tbody.innerHTML = ""; appState.proveedores.forEach(prov => tbody.appendChild(createProvRowHTML(prov)));
-}
-
-function createProvRowHTML(prov) {
-    const tr = document.createElement("tr"); tr.setAttribute("data-row-index", prov.rowIndex || "NEW"); const cGen = appState.activeProvTab === 'gen' ? '' : 'hidden'; const cBan = appState.activeProvTab === 'ban' ? '' : 'hidden'; const cCon = appState.activeProvTab === 'con' ? '' : 'hidden';
-    if (appState.proveedoresEditMode) { tr.innerHTML = `<td><input type="text" class="edit-input i-prov" value="${prov.proveedor || ''}"></td><td><input type="text" class="edit-input i-nom" value="${prov.nombre || ''}"></td><td class="col-prov-gen ${cGen}"><input type="text" class="edit-input i-dir" value="${prov.direccion || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-ban" value="${prov.banco || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-ali" value="${prov.alias || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-cbu" value="${prov.cbu || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-tel" value="${prov.telefono || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-mail" value="${prov.mail || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-web" value="${prov.web || ''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="deleteProveedorUI(this, ${prov.rowIndex || 'null'})">Borrar</button></td>`; } 
-    else { const btnWeb = prov.web ? `<button class="action-btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color); background:transparent; padding: 6px 10px;" onclick="openWebModal(${prov.rowIndex})">Ver Web</button>` : '-'; tr.innerHTML = `<td>${prov.proveedor || '-'}</td><td>${prov.nombre || '-'}</td><td class="col-prov-gen ${cGen}">${prov.direccion || '-'}</td><td class="col-prov-ban ${cBan}">${prov.banco || '-'}</td><td class="col-prov-ban ${cBan}">${prov.alias || '-'}</td><td class="col-prov-ban ${cBan}">${prov.cbu || '-'}</td><td class="col-prov-con ${cCon}">${prov.telefono || '-'}</td><td class="col-prov-con ${cCon}">${prov.mail || '-'}</td><td class="text-center col-prov-con ${cCon}">${btnWeb}</td>`; } return tr;
-}
-
+function renderProveedores() { const thead = document.querySelector("#proveedores-table thead"); const tbody = document.getElementById("proveedores-tbody"); const cGen = appState.activeProvTab === 'gen' ? '' : 'hidden'; const cBan = appState.activeProvTab === 'ban' ? '' : 'hidden'; const cCon = appState.activeProvTab === 'con' ? '' : 'hidden'; let thHtml = `<tr><th class="text-left">Proveedor</th><th class="text-left">Nombre</th><th class="text-left col-prov-gen ${cGen}">Dirección</th><th class="text-left col-prov-ban ${cBan}">Banco</th><th class="text-left col-prov-ban ${cBan}">Alias</th><th class="text-left col-prov-ban ${cBan}">CBU</th><th class="text-left col-prov-con ${cCon}">Teléfono</th><th class="text-left col-prov-con ${cCon}">Mail</th><th class="text-center col-prov-con ${cCon}">Web</th>`; if (appState.proveedoresEditMode) thHtml += `<th class="text-center sticky-col">Acciones</th>`; thHtml += `</tr>`; thead.innerHTML = thHtml; tbody.innerHTML = ""; appState.proveedores.forEach(prov => tbody.appendChild(createProvRowHTML(prov))); }
+function createProvRowHTML(prov) { const tr = document.createElement("tr"); tr.setAttribute("data-row-index", prov.rowIndex || "NEW"); const cGen = appState.activeProvTab === 'gen' ? '' : 'hidden'; const cBan = appState.activeProvTab === 'ban' ? '' : 'hidden'; const cCon = appState.activeProvTab === 'con' ? '' : 'hidden'; if (appState.proveedoresEditMode) { tr.innerHTML = `<td><input type="text" class="edit-input i-prov" value="${prov.proveedor || ''}"></td><td><input type="text" class="edit-input i-nom" value="${prov.nombre || ''}"></td><td class="col-prov-gen ${cGen}"><input type="text" class="edit-input i-dir" value="${prov.direccion || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-ban" value="${prov.banco || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-ali" value="${prov.alias || ''}"></td><td class="col-prov-ban ${cBan}"><input type="text" class="edit-input i-cbu" value="${prov.cbu || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-tel" value="${prov.telefono || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-mail" value="${prov.mail || ''}"></td><td class="col-prov-con ${cCon}"><input type="text" class="edit-input i-web" value="${prov.web || ''}"></td><td class="action-buttons sticky-col"><button class="action-btn btn-delete" onclick="deleteProveedorUI(this, ${prov.rowIndex || 'null'})">Borrar</button></td>`; } else { const btnWeb = prov.web ? `<button class="action-btn btn-secondary" style="border: 1px solid var(--primary-color); color: var(--primary-color); background:transparent; padding: 6px 10px;" onclick="openWebModal(${prov.rowIndex})">Ver Web</button>` : '-'; tr.innerHTML = `<td>${prov.proveedor || '-'}</td><td>${prov.nombre || '-'}</td><td class="col-prov-gen ${cGen}">${prov.direccion || '-'}</td><td class="col-prov-ban ${cBan}">${prov.banco || '-'}</td><td class="col-prov-ban ${cBan}">${prov.alias || '-'}</td><td class="col-prov-ban ${cBan}">${prov.cbu || '-'}</td><td class="col-prov-con ${cCon}">${prov.telefono || '-'}</td><td class="col-prov-con ${cCon}">${prov.mail || '-'}</td><td class="text-center col-prov-con ${cCon}">${btnWeb}</td>`; } return tr; }
 window.deleteProveedorUI = function(btn, rowIndex) { if (!rowIndex || rowIndex === 'null') { btn.closest("tr").remove(); } else { if(confirm("¿Eliminar proveedor?")) { sendGlobalPostRequest("PROV_DELETE", { rowIndex: rowIndex }); } } };
-window.openWebModal = function(rowIndex) { 
-    appState.activeProvRowIndex = rowIndex; const prov = appState.proveedores.find(p => p.rowIndex === rowIndex); if(!prov) return; document.getElementById('modal-prov-name').textContent = prov.nombre || prov.proveedor || "Proveedor"; document.getElementById('web-view-mode').classList.remove('hidden'); document.getElementById('web-edit-mode').classList.add('hidden'); document.getElementById('btn-modal-edit').classList.remove('hidden'); document.getElementById('btn-modal-save').classList.add('hidden'); document.getElementById('btn-modal-cancel').classList.add('hidden'); const link = document.getElementById('modal-web-link'); const noWeb = document.getElementById('modal-no-web'); 
-    if(prov.web && prov.web.trim() !== "") { let url = prov.web.trim(); if (!url.startsWith('http')) { url = 'https://' + url; } link.href = url; link.classList.remove('hidden'); noWeb.classList.add('hidden'); document.getElementById('modal-web-input').value = prov.web; } else { link.classList.add('hidden'); noWeb.classList.remove('hidden'); document.getElementById('modal-web-input').value = ""; } document.getElementById('web-modal').classList.remove('hidden'); 
-};
-async function saveProveedores() {
-    const tbody = document.getElementById("proveedores-tbody"); const rows = tbody.querySelectorAll("tr"); toggleLoader(true, "Guardando proveedores...");
-    try {
-        for (let tr of rows) { let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); let pData = null; if (rowIndex) pData = appState.proveedores.find(p => p.rowIndex === rowIndex); const getVal = (sel) => { const input = tr.querySelector(sel); return input ? input.value : ""; }; const payload = { rowIndex: rowIndex, proveedor: getVal(".i-prov") || (pData ? pData.proveedor : ""), nombre: getVal(".i-nom") || (pData ? pData.nombre : ""), direccion: getVal(".i-dir") || (pData ? pData.direccion : ""), banco: getVal(".i-ban") || (pData ? pData.banco : ""), alias: getVal(".i-ali") || (pData ? pData.alias : ""), cbu: getVal(".i-cbu") || (pData ? pData.cbu : ""), telefono: getVal(".i-tel") || (pData ? pData.telefono : ""), mail: getVal(".i-mail") || (pData ? pData.mail : ""), web: getVal(".i-web") || (pData ? pData.web : "") }; await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: rowIndex ? "PROV_EDIT" : "PROV_ADD", data: payload }) }); }
-        toggleProveedoresEditMode(false); fetchFinancialData();
-    } catch { toggleLoader(false); }
-}
-
-function setupWebModalHandlers() {
-    if(document.getElementById('btn-modal-close')) document.getElementById('btn-modal-close').onclick = () => document.getElementById('web-modal').classList.add('hidden');
-    if(document.getElementById('btn-modal-cancel')) document.getElementById('btn-modal-cancel').onclick = () => window.openWebModal(appState.activeProvRowIndex);
-    if(document.getElementById('btn-modal-edit')) document.getElementById('btn-modal-edit').onclick = function() { document.getElementById('web-view-mode').classList.add('hidden'); document.getElementById('web-edit-mode').classList.remove('hidden'); this.classList.add('hidden'); document.getElementById('btn-modal-save').classList.remove('hidden'); document.getElementById('btn-modal-cancel').classList.remove('hidden'); };
-    if(document.getElementById('btn-modal-save')) document.getElementById('btn-modal-save').onclick = function() { const prov = appState.proveedores.find(p => p.rowIndex === appState.activeProvRowIndex); if (prov) { prov.web = document.getElementById('modal-web-input').value; sendGlobalPostRequest("PROV_EDIT", prov); document.getElementById('web-modal').classList.add('hidden'); } };
-}
+window.openWebModal = function(rowIndex) { appState.activeProvRowIndex = rowIndex; const prov = appState.proveedores.find(p => p.rowIndex === rowIndex); if(!prov) return; document.getElementById('modal-prov-name').textContent = prov.nombre || prov.proveedor || "Proveedor"; document.getElementById('web-view-mode').classList.remove('hidden'); document.getElementById('web-edit-mode').classList.add('hidden'); document.getElementById('btn-modal-edit').classList.remove('hidden'); document.getElementById('btn-modal-save').classList.add('hidden'); document.getElementById('btn-modal-cancel').classList.add('hidden'); const link = document.getElementById('modal-web-link'); const noWeb = document.getElementById('modal-no-web'); if(prov.web && prov.web.trim() !== "") { let url = prov.web.trim(); if (!url.startsWith('http')) { url = 'https://' + url; } link.href = url; link.classList.remove('hidden'); noWeb.classList.add('hidden'); document.getElementById('modal-web-input').value = prov.web; } else { link.classList.add('hidden'); noWeb.classList.remove('hidden'); document.getElementById('modal-web-input').value = ""; } document.getElementById('web-modal').classList.remove('hidden'); };
+async function saveProveedores() { const tbody = document.getElementById("proveedores-tbody"); const rows = tbody.querySelectorAll("tr"); toggleLoader(true, "Guardando..."); try { for (let tr of rows) { let rowIndex = tr.getAttribute("data-row-index"); if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); let pData = null; if (rowIndex) pData = appState.proveedores.find(p => p.rowIndex === rowIndex); const getVal = (sel) => { const input = tr.querySelector(sel); return input ? input.value : ""; }; const payload = { rowIndex: rowIndex, proveedor: getVal(".i-prov") || (pData ? pData.proveedor : ""), nombre: getVal(".i-nom") || (pData ? pData.nombre : ""), direccion: getVal(".i-dir") || (pData ? pData.direccion : ""), banco: getVal(".i-ban") || (pData ? pData.banco : ""), alias: getVal(".i-ali") || (pData ? pData.alias : ""), cbu: getVal(".i-cbu") || (pData ? pData.cbu : ""), telefono: getVal(".i-tel") || (pData ? pData.telefono : ""), mail: getVal(".i-mail") || (pData ? pData.mail : ""), web: getVal(".i-web") || (pData ? pData.web : "") }; await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: rowIndex ? "PROV_EDIT" : "PROV_ADD", data: payload }) }); } toggleProveedoresEditMode(false); fetchFinancialData(); } catch { toggleLoader(false); } }
