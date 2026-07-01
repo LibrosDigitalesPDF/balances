@@ -511,3 +511,94 @@ window.openWebModal = function(rowIndex) {
     } else { container.innerHTML = `<p style="font-size:9.5pt; opacity:0.5;">No hay páginas web registradas para este proveedor.</p>`; }
     document.getElementById('web-modal').classList.remove('hidden');
 };
+
+// ==========================================
+// RED, COMUNICACIÓN Y FUNCIONES FALTANTES
+// ==========================================
+
+async function saveProveedores() { 
+    const tbody = document.getElementById("proveedores-tbody"); 
+    const rows = tbody.querySelectorAll("tr"); 
+    toggleLoader(true, "Guardando..."); 
+    try { 
+        for (let tr of rows) { 
+            let rowIndex = tr.getAttribute("data-row-index"); 
+            if (rowIndex === "NEW") rowIndex = null; else rowIndex = parseInt(rowIndex); 
+            let pData = null; if (rowIndex) pData = appState.proveedores.find(p => p.rowIndex === rowIndex); 
+            const getVal = (sel) => { const input = tr.querySelector(sel); return input ? input.value : ""; }; 
+            const payload = { rowIndex: rowIndex, proveedor: getVal(".i-prov") || (pData ? pData.proveedor : ""), nombre: getVal(".i-nom") || (pData ? pData.nombre : ""), direccion: getVal(".i-dir") || (pData ? pData.direccion : ""), banco: getVal(".i-ban") || (pData ? pData.banco : ""), alias: getVal(".i-ali") || (pData ? pData.alias : ""), cbu: getVal(".i-cbu") || (pData ? pData.cbu : ""), telefono: getVal(".i-tel") || (pData ? pData.telefono : ""), mail: getVal(".i-mail") || (pData ? pData.mail : ""), web: getVal(".i-web") || (pData ? pData.web : "") }; 
+            await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: rowIndex ? "PROV_EDIT" : "PROV_ADD", data: payload }) }); 
+        } 
+        toggleProveedoresEditMode(false); fetchFinancialData(); 
+    } catch { toggleLoader(false); } 
+}
+
+function injectSueldosIntoBalances() {
+    if (!appState.balances) return;
+    appState.balances.gastos["Sueldos"] = {};
+    const gastosSueldos = appState.balances.gastos["Sueldos"];
+
+    Object.keys(appState.sueldos).forEach(tabName => {
+        const parts = tabName.split(" ");
+        if(parts.length !== 2) return;
+        const mesNombre = parts[0]; const yearStr = parts[1];
+        const monthIdx = MESES_NOMBRES.indexOf(mesNombre); if(monthIdx === -1) return;
+        const monthStr = String(monthIdx + 1).padStart(2, '0');
+        const periodKey = `${yearStr}-${monthStr}`;
+
+        if (!gastosSueldos[periodKey]) gastosSueldos[periodKey] = [];
+
+        appState.sueldos[tabName].forEach((worker, wIndex) => {
+            const rData = worker.rowData;
+            const nombre = rData[IDX_NOM]; if (!nombre || nombre === "-") return;
+            
+            let methodStr = "-"; 
+            const valE = Math.abs(parseMonto(rData[IDX_ME])); const valT = Math.abs(parseMonto(r[IDX_MT]));
+            if (valE > 0 && valT > 0) methodStr = "Efectivo y Transf."; else if (valE > 0) methodStr = "Efectivo"; else if (valT > 0) methodStr = "Transferencia";
+            
+            const sueldoNum = Math.abs(parseMonto(rData[IDX_SUE])); 
+            const fechaRawSueldo = rData[IDX_FP];
+            
+            if (sueldoNum > 0) {
+                gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${monthIdx}_SF`, fecha: formatDateToAR(fechaRawSueldo) || `01/${monthStr}/${yearStr}`, detalle: nombre, monto: -sueldoNum, mes: mesNombre, metodoPago: methodStr, precioHora: rData[IDX_PH] || "-", horas: rData[IDX_HOR] || "-", operacion: "Sueldo Final", isVirtual: true });
+            }
+            
+            for (let a = 0; a < 3; a++) {
+                let adMonto = Math.abs(parseMonto(rData[IDX_AD_START + (a*2)]));
+                if (adMonto > 0) { gastosSueldos[periodKey].push({ rowIndex: `s_${wIndex}_${monthIdx}_A${a+1}`, fecha: formatDateToAR(rData[IDX_AD_START + 1 + (a*2)]) || `01/${monthStr}/${yearStr}`, detalle: `${nombre} (Adelanto ${a+1})`, monto: -adMonto, mes: mesNombre, metodoPago: methodStr, precioHora: "-", horas: "-", operacion: `Adelanto ${a+1}`, isVirtual: true }); }
+            }
+        });
+    });
+}
+
+function fetchFinancialData() {
+    toggleLoader(true);
+    fetch(API_URL).then(r => r.json()).then(j => {
+        if (j.status === "success") {
+            appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
+            injectSueldosIntoBalances(); populateSidebarHistory(); populateCuentasDropdown(); renderBalance(); renderProveedores();
+            if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
+            if (document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary();
+            if (appState.currentHistorySheet) { renderHistoryTable(); }
+        }
+    }).finally(() => toggleLoader(false));
+}
+
+function fetchFinancialDataSilent() {
+    fetch(API_URL).then(r => r.json()).then(j => {
+        if (j.status === "success") {
+            appState.balances = j.data.balances; appState.carpetas = j.data.carpetas || {}; appState.proveedores = j.data.proveedores || []; appState.sueldos = j.data.sueldos || {};
+            injectSueldosIntoBalances(); populateSidebarHistory();
+            if (document.getElementById("module-sueldos").classList.contains("active")) window.renderSueldos();
+        }
+    });
+}
+
+function sendGlobalPostRequest(action, dataObj) { 
+    toggleLoader(true, "Procesando..."); 
+    fetch(API_URL, { method: "POST", body: JSON.stringify({ action: action, data: dataObj }) })
+    .then(res => res.json()).then(res => { 
+        if (res.status === "success") fetchFinancialData(); 
+        else { alert("Error en la solicitud."); toggleLoader(false); } 
+    }).catch(() => toggleLoader(false)); 
+}
