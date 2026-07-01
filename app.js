@@ -113,6 +113,62 @@ function initTabs() {
     });
 }
 
+function setupEventListeners() {
+    if(document.getElementById("select-month")) document.getElementById("select-month").onchange = (e) => { appState.selectedMonth = e.target.value; renderBalance(); };
+    if(document.getElementById("select-year")) document.getElementById("select-year").onchange = (e) => { appState.selectedYear = e.target.value; renderBalance(); if(document.getElementById("view-resumen-anual").classList.contains("active")) renderAnnualSummary(); };
+    if(document.getElementById("historial-month")) document.getElementById("historial-month").onchange = (e) => { appState.historyMonth = e.target.value; renderHistoryTable(); };
+    if(document.getElementById("historial-year")) document.getElementById("historial-year").onchange = (e) => { appState.historyYear = e.target.value; renderHistoryTable(); };
+
+    if(document.getElementById("btn-save-nueva-op")) {
+        document.getElementById("btn-save-nueva-op").onclick = () => {
+            const cuenta = document.getElementById("new-op-cuenta").value; const fecha = document.getElementById("new-op-fec").value; const det = document.getElementById("new-op-det").value; let mon = parseMonto(document.getElementById("new-op-mon").value); const ope = document.getElementById("new-op-ope").value; const i21 = document.getElementById("new-op-i21").value; const i10 = document.getElementById("new-op-i10").value; const icont = document.getElementById("new-op-icont").value; const cc = document.getElementById("new-op-comp-c") ? document.getElementById("new-op-comp-c").value : ""; const cv = document.getElementById("new-op-comp-v") ? document.getElementById("new-op-comp-v").value : "";
+            if(!cuenta || !fecha || !mon) { alert("Complete cuenta, fecha y monto."); return; }
+            let isGasto = cuenta !== "Ingresos"; if(isGasto && mon > 0) mon = -mon;
+            sendGlobalPostRequest("BAL_ADD", { rowIndex: null, sheetName: cuenta, fecha: fecha, detalle: det, monto: mon, operacion: ope, iva21: i21, iva105: i10, ivaCont: icont, idComprobanteCompra: cc, idComprobantePago: cv }); 
+            document.querySelectorAll("#view-nueva-operacion input").forEach(i => i.value = ""); document.getElementById("new-op-cuenta").value = "";
+        };
+    }
+
+    if(document.getElementById("btn-historial-edit-mode")) document.getElementById("btn-historial-edit-mode").onclick = () => toggleHistorialEditMode(true);
+    if(document.getElementById("btn-historial-cancel")) document.getElementById("btn-historial-cancel").onclick = () => toggleHistorialEditMode(false);
+    if(document.getElementById("btn-historial-save")) document.getElementById("btn-historial-save").onclick = () => saveHistorial();
+
+    document.querySelectorAll("#module-proveedores .menu-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll("#module-proveedores .menu-btn").forEach(b => b.classList.remove("active")); btn.classList.add("active"); appState.activeProvTab = btn.getAttribute("data-prov-tab"); document.getElementById("prov-tab-subtitle").textContent = "Gestión de " + appState.activeProvTab; renderProveedores(); }; });
+    if(document.getElementById("btn-proveedores-edit-mode")) document.getElementById("btn-proveedores-edit-mode").onclick = () => toggleProveedoresEditMode(true);
+    if(document.getElementById("btn-proveedores-cancel")) document.getElementById("btn-proveedores-cancel").onclick = () => toggleProveedoresEditMode(false);
+    if(document.getElementById("btn-proveedores-save")) document.getElementById("btn-proveedores-save").onclick = () => saveProveedores();
+
+    if(document.getElementById("sueldos-month")) document.getElementById("sueldos-month").onchange = (e) => { appState.sueldosMonth = e.target.value; window.renderSueldos(); };
+    if(document.getElementById("sueldos-year")) document.getElementById("sueldos-year").onchange = (e) => { appState.sueldosYear = e.target.value; window.renderSueldos(); };
+    
+    if(document.getElementById("btn-adelantos-edit")) document.getElementById("btn-adelantos-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
+    if(document.getElementById("btn-adelantos-cancel")) document.getElementById("btn-adelantos-cancel").onclick = () => { appState.sueldosEditMode = false; window.renderSueldos(); };
+    if(document.getElementById("btn-adelantos-save")) document.getElementById("btn-adelantos-save").onclick = () => window.saveSueldos();
+    if(document.getElementById("btn-adelantos-add")) document.getElementById("btn-adelantos-add").onclick = () => { if(appState.sueldosVisibleAdelantos < 3) { appState.sueldosVisibleAdelantos++; window.renderSueldos(); } else { alert("Límite máximo de 3 adelantos."); } };
+
+    if(document.getElementById("btn-liq-edit")) document.getElementById("btn-liq-edit").onclick = () => { appState.sueldosEditMode = true; window.renderSueldos(); };
+    if(document.getElementById("btn-liq-cancel")) document.getElementById("btn-liq-cancel").onclick = () => { appState.sueldosEditMode = false; appState.sueldosShowPlus=0; appState.sueldosShowDebito=0; appState.sueldosShowAguinaldo=false; window.renderSueldos(); };
+    if(document.getElementById("btn-liq-save")) document.getElementById("btn-liq-save").onclick = () => window.saveSueldos();
+    
+    if(document.getElementById("btn-liq-add-plus")) document.getElementById("btn-liq-add-plus").onclick = () => { if(appState.sueldosShowPlus < 8) { appState.sueldosShowPlus++; window.renderSueldos(); } };
+    if(document.getElementById("btn-liq-add-debito")) document.getElementById("btn-liq-add-debito").onclick = () => { if(appState.sueldosShowDebito < 3) { appState.sueldosShowDebito++; window.renderSueldos(); } };
+    if(document.getElementById("btn-liq-add-aguinaldo")) document.getElementById("btn-liq-add-aguinaldo").onclick = () => { appState.sueldosShowAguinaldo = true; window.renderSueldos(); };
+
+    if(document.getElementById("btn-refresh")) document.getElementById("btn-refresh").onclick = () => fetchFinancialData();
+    
+    if(document.getElementById("global-file-input")) {
+        document.getElementById("global-file-input").onchange = function(e) {
+            const file = e.target.files[0]; if (!file || !appState.currentUpload) return; 
+            showToast("Subiendo comprobante a Drive..."); const reader = new FileReader(); 
+            reader.onload = function(evt) { 
+                const payload = { action: "UPLOAD_FILE", data: { sheetName: appState.currentUpload.sheetName, rowIndex: appState.currentUpload.rowIndex, type: appState.currentUpload.type, fileName: file.name, mimeType: file.type, fileBase64: evt.target.result.split(',')[1] } }; 
+                fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(r=>r.json()).then(d => { if(d.status==="success") { showToast("¡Archivo subido!"); fetchFinancialDataSilent(); } else { alert("Error al subir el archivo."); } }).catch(() => showToast("Error de conexión.")); 
+                document.getElementById("global-file-input").value = ""; 
+            }; reader.readAsDataURL(file);
+        };
+    }
+}
+
 // ==========================================
 // MÓDULO: SUELDOS (BARRA UNIFICADA E HISTORIAL EN PANTALLA PRINCIPAL)
 // ==========================================
